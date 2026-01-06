@@ -1,0 +1,165 @@
+/* ===============================
+   CONFIGURAÇÕES GERAIS
+================================ */
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    background-color: #f7f9fb;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ===============================
+   HEADER FIXO (TOPO)
+================================ */
+
+.header-fixed {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+}
+
+/* TOPO INSTITUCIONAL */
+.header-top {
+    background: #0d3b66;
+    color: white;
+    padding: 15px 10px;
+    border-bottom: 1px solid #ccc;
+}
+
+.header-top img {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 5px;
+}
+
+/* ===============================
+   NAVBAR
+================================ */
+
+.navbar {
+    margin: 0;
+}
+
+/* ===============================
+   CONTEÚDO PRINCIPAL
+================================ */
+
+.main-content {
+    padding-top: 270px; /* altura do header + navbar */
+    padding-bottom: 40px;
+    min-height: calc(100vh - 120px);
+}
+
+/* ===============================
+   FOOTER
+================================ */
+
+.footer-bottom {
+    background: #0d3b66;
+    color: white;
+    padding: 15px 10px;
+    margin-top: 40px;
+}
+
+/* ===============================
+   CARDS
+================================ */
+
+.card {
+    background-color: #ffffff;
+    border-radius: 1rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    padding: 2rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.25);
+}
+
+/* ===============================
+   FORMULÁRIOS
+================================ */
+
+.form-label {
+    font-weight: 500;
+    color: #555;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    margin-bottom: 0.7rem;
+    border: 1px solid #ccc;
+    border-radius: 0.5rem;
+    transition: border 0.3s ease, box-shadow 0.3s ease;
+}
+
+input:focus {
+    outline: none;
+    border-color: #4e54c8;
+    box-shadow: 0 0 5px rgba(78, 84, 200, 0.5);
+}
+
+/* ===============================
+   BOTÕES
+================================ */
+
+.btn-primary {
+    background-color: #4e54c8;
+    border: none;
+    font-weight: 500;
+    border-radius: 0.5rem;
+}
+
+.btn-primary:hover {
+    background-color: #3b40a0;
+}
+
+/* ===============================
+   ALERTAS
+================================ */
+
+.alert-danger {
+    background-color: #f8d7da;
+    color: #842029;
+    border-radius: 0.5rem;
+    padding: 0.6rem 1rem;
+}
+
+/* ===============================
+   RESPONSIVO
+================================ */
+
+@media (max-width: 768px) {
+
+    .main-content {
+        padding-top: 310px;
+    }
+
+    .header-top h4,
+    .header-top h5,
+    .header-top h6 {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 576px) {
+
+    .main-content {
+        padding-top: 340px;
+    }
+
+    .card {
+        padding: 1.5rem;
+    }
+}

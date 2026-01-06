@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Painel{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow p-4">
+
+            <h3 class="mb-4">Bem-vindo, {{ user.username }}</h3>
+
+            <p><strong>NIM:</strong>
+                {% if recenseamento %}
+                {{ recenseamento.nim }}
+                {% else %}
+                Não atribuído
+                {% endif %}
+            </p>
+
+            <p><strong>Estado do Recenseamento:</strong>
+                {% if recenseamento %}
+                <span class="badge bg-success">Regularizado</span>
+                {% else %}
+                <span class="badge bg-danger">Pendente</span>
+                {% endif %}
+            </p>
+
+            <hr>
+
+            <h4>Ação Disponível</h4>
+
+            {% if recenseamento or perfil %}
+            <a href="{% url 'documento:solicitar_documento' %}" class="btn btn-primary">Solicitar Documento</a>
+            {% else %}
+            <div class="alert alert-warning mt-3" role="alert"> ⚠️ Seu perfil ainda não está completo! <a
+                href="{% url 'usuarios:completar_perfil' %}" class="alert-link">Clique aqui para completar</a>. Para
+                maiores de 35 anos.
+            </div>
+            <a href="{% url 'recenseamento:recensear' %}" class="btn btn-warning">Recensear</a>
+            {% endif %}
+            
+        </div>
+    </div>
+</div>
+{% endblock %}
