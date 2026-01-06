@@ -30,6 +30,7 @@ DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 # DEBUG = True
 
 ALLOWED_HOSTS = os.getenv(
+    ".onrender.com",
     "ALLOWED_HOSTS",
     "localhost,127.0.0.1"
 ).split(",")
@@ -87,14 +88,15 @@ WSGI_APPLICATION = 'meu_projecto.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'postgres'),
-        'USER': os.getenv('DB_USER', 'iassine'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'iassine123'),
-        'HOST': os.getenv('DB_HOST', 'db'),  # <-- importante
+        'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.postgresql'),
+        'NAME': os.getenv('DB_NAME', 'meu_projecto_db'),
+        'USER': os.getenv('DB_USER', 'meu_projecto_db_user'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'qpFpcMNqRHmHUJmNh2FH5uPZWaCTnhxg'),
+        'HOST': os.getenv('DB_HOST', 'dpg-d5ejjjchg0os73c1v1q0-a.virginia-postgres.render.com'),
         'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
+
 
 
 # Password validation
