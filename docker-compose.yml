@@ -1,55 +1,24 @@
 services:
-  db:
-    image: postgres:16
-    container_name: db
-    restart: always
-    environment:
-      POSTGRES_DB: ${DB_NAME:-postgres}
-      POSTGRES_USER: ${DB_USER:-iassine}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-iassine123}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
   web:
     build: .
-    container_name: web
-    command: gunicorn meu_projecto.wsgi:application --bind 0.0.0.0:8000
-
+    command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/meu_projecto
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - .env.local
     depends_on:
       - db
 
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: iassine
+      POSTGRES_PASSWORD: iassine123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
 volumes:
   postgres_data:
-
-
-
-# # services:
-# #   web:
-# #     build: .
-# #     command: python manage.py runserver 0.0.0.0:8000
-# #     volumes:
-# #       - .:/meu_projecto
-# #     ports:
-# #       - "8000:8000"
-# #     depends_on:
-# #       - db
-
-# #   db:
-# #     image: postgres:16
-# #     environment:
-# #       POSTGRES_DB: postgres
-# #       POSTGRES_USER: iassine
-# #       POSTGRES_PASSWORD: iassine123
-# #     volumes:
-# #       - postgres_data:/var/lib/postgresql/data
-
-# # volumes:
-# #   postgres_data:

@@ -29,7 +29,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar app
 COPY . .
-
+RUN python manage.py collectstatic --noinput
 # Variáveis de produção
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -40,76 +40,3 @@ EXPOSE 8000
 
 # Comando padrão para Gunicorn
 CMD ["gunicorn", "meu_projecto.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
-
-
-
-# FROM python:3.10-bullseye
-
-# ENV DEBIAN_FRONTEND=noninteractive
-# WORKDIR /meu_projecto
-
-# RUN apt-get update && apt-get install -y \
-#     build-essential \
-#     cmake \
-#     pkg-config \
-#     libgl1 \
-#     libglib2.0-0 \
-#     libsm6 \
-#     libxext6 \
-#     libxrender-dev \
-#     poppler-utils \
-#     tesseract-ocr \
-#     tesseract-ocr-por \
-#     ffmpeg \
-#     && rm -rf /var/lib/apt/lists/*
-
-# RUN python -m pip install --upgrade pip setuptools wheel
-
-# COPY requirements.txt .
-# RUN pip install --no-cache-dir -r requirements.txt
-
-# COPY . .
-
-# RUN python manage.py collectstatic --noinput
-
-# EXPOSE 8000
-
-# CMD gunicorn meu_projecto.wsgi:application \
-#     --bind 0.0.0.0:8000 \
-#     --workers 1 \
-#     --timeout 180
-
-
-
-# FROM python:3.10-bullseye
-
-# ENV DEBIAN_FRONTEND=noninteractive
-
-# WORKDIR /meu_projecto
-
-# RUN apt-get update && apt-get install -y \
-#     build-essential \
-#     cmake \
-#     pkg-config \
-#     libgl1 \
-#     libglib2.0-0 \
-#     libsm6 \
-#     libxext6 \
-#     libxrender-dev \
-#     poppler-utils \
-#     tesseract-ocr \
-#     tesseract-ocr-por \
-#     ffmpeg \
-#     && rm -rf /var/lib/apt/lists/*
-
-# RUN python -m pip install --upgrade "pip<24" setuptools wheel
-
-# COPY requirements.txt .
-# RUN pip install --no-cache-dir -r requirements.txt
-
-# COPY . .
-
-# EXPOSE 8000
-# CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
-
-
