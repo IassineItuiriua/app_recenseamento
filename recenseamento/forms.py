@@ -14,6 +14,14 @@ from .utils.files import salvar_temp_upload
 from django.conf import settings
 
 
+def clean(self):
+    cleaned_data = super().clean()
+
+    if not settings.ENABLE_OCR:
+        return cleaned_data
+
+    # ⬇️ resto do OCR
+
 # ==============================
 # DeepFace lazy loader (SEGURO)
 # ==============================

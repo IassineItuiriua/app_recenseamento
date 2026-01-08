@@ -1,3 +1,4 @@
+import os
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import login, logout
@@ -7,11 +8,16 @@ from django.contrib import messages
 from django.conf import settings
 from datetime import date
 import logging
-
+import pytesseract
 from notificacoes.accoes import apos_completar_perfil, apos_recenseamento, apos_registro
 from .forms import CompletarPerfilUsuarioForm, UserRegistrationForm
 from recenseamento.forms import RecenseamentoForm, CompletarPerfilCidadaoForm
 from recenseamento.models import Recenseamento, PerfilCidadao
+
+
+# Configuração do executável do Tesseract OCR (Windows)
+if os.name == "nt":  # Windows
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 logger = logging.getLogger(__name__)
 
