@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from .models import Recenseamento, gerar_nim
-from .forms import RecenseamentoForm, CompletarPerfilCidadaoForm
+from .forms import RecenseamentoForm
 
 class RecenseamentoView(LoginRequiredMixin, View):
     template_name = "recenseamento/recensear.html"

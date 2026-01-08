@@ -16,7 +16,6 @@ def get_file_path(file_obj, prefix):
     Retorna o caminho físico de um arquivo.
     Pode ser um UploadedFile (novo) ou FileField já existente.
     """
-    import tempfile, os
 
     # Se for UploadedFile
     if hasattr(file_obj, "read"):
