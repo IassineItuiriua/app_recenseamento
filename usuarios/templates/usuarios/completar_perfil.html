@@ -7,9 +7,7 @@
   <div class="col-md-9">
     <div class="card shadow-sm p-4">
 
-      <h3 class="mb-4 text-center">
-        Completar / Atualizar Perfil
-      </h3>
+      <h3 class="mb-4 text-center">Completar / Atualizar Perfil</h3>
 
       {# ================= MENSAGENS ================= #}
       {% if messages %}
@@ -21,19 +19,37 @@
         {% endfor %}
       {% endif %}
 
-      {# ================= FORMULÁRIO ================= #}
       <form method="post" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
+
+        {# ================= DADOS BÁSICOS ================= #}
+        <h5>Dados do Usuário</h5>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Email</label>
+            {{ form_usuario.email }}
+            {{ form_usuario.email.errors }}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Telefone</label>
+          {{ form_usuario.telefone }}
+          {{ form_usuario.telefone.errors }}
+        </div>
+
+        
+
+        {# ================= PERFIL CIDADÃO (>35 anos) ================= #}
+        <h5 class="mt-4">Perfil Cidadão (>35 anos)</h5>
         {{ form_cidadao.non_field_errors }}
 
-        {# ================= DADOS PESSOAIS ================= #}
         <div class="row">
           <div class="col-md-6 mb-3">
             <label class="form-label">Nome Completo</label>
             {{ form_cidadao.nome_completo }}
-            {{ form_cidadao.nome.errors }}
+            {{ form_cidadao.nome_completo.errors }}
           </div>
-
           <div class="col-md-6 mb-3">
             <label class="form-label">Data de Nascimento</label>
             {{ form_cidadao.data_nascimento }}
@@ -41,30 +57,17 @@
           </div>
         </div>
 
-        {# ================= CONTATOS ================= #}
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Telefone</label>
-            {{ form_cidadao.telefone }}
-            {{ form_cidadao.telefone.errors }}
-          </div>
-
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Email</label>
-            {{ form_cidadao.email }}
-            {{ form_cidadao.email.errors }}
-          </div>
+        <div class="mb-3">
+          <label class="form-label">Número do BI</label>
+          {{ form_cidadao.numero_bi }}
+          {{ form_cidadao.numero_bi.errors }}
         </div>
 
-        {# ================= DOCUMENTO BI ================= #}
         <div class="mb-3">
-          <label class="form-label">
-            Documento de Identidade (BI) <small class="text-muted">(PDF/JPG/PNG ≤ 5MB)</small>
-          </label>
+          <label class="form-label">Arquivo do BI (PDF/JPG/PNG)</label>
           {{ form_cidadao.bi }}
           {{ form_cidadao.bi.errors }}
-
-          {% if perfil.bi %}
+          {% if perfil and perfil.bi %}
             <div class="mt-2">
               <a href="{{ perfil.bi.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
                 Ver BI enviado
@@ -73,28 +76,20 @@
           {% endif %}
         </div>
 
-        {# ================= FOTO DO CIDADÃO ================= #}
-        <div class="mb-4">
-          <label class="form-label">
-            Foto do Cidadão <small class="text-muted">(JPG/PNG ≤ 5MB)</small>
-          </label>
+        <div class="mb-3">
+          <label class="form-label">Foto do Cidadão (JPG/PNG)</label>
           {{ form_cidadao.foto }}
           {{ form_cidadao.foto.errors }}
-
-          {% if perfil.foto %}
+          {% if perfil and perfil.foto %}
             <div class="mt-2">
-              <img src="{{ perfil.foto.url }}" alt="Foto do cidadão" class="img-thumbnail" style="max-width: 160px;">
+              <img src="{{ perfil.foto.url }}" class="img-thumbnail" style="max-width: 160px;">
             </div>
           {% endif %}
         </div>
 
-        {# ================= BOTÃO ================= #}
-        <div class="text-end">
-          <button type="submit" class="btn btn-success px-4">
-            Guardar / Atualizar
-          </button>
+        <div class="text-end mt-4">
+          <button type="submit" class="btn btn-success px-4">Guardar / Atualizar</button>
         </div>
-
       </form>
     </div>
   </div>

@@ -1,8 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from datetime import date
-from recenseamento.utils.ocr import extrair_numero_bi
-from recenseamento.utils.bi import extrair_numero_bi
 from .models import Recenseamento, PerfilCidadao
 from PIL import Image
 from pdf2image import convert_from_path
@@ -13,52 +11,21 @@ import os
 from .utils.files import salvar_temp_upload
 from django.conf import settings
 
-
-def clean(self):
-    cleaned_data = super().clean()
-
-    if not settings.ENABLE_OCR:
-        return cleaned_data
-
-    # ⬇️ resto do OCR
-
-# ==============================
-# DeepFace lazy loader (SEGURO)
-# ==============================
-_deepface_instance = None
-
-def get_deepface():
-    global _deepface_instance
-    if _deepface_instance is None:
-        from deepface import DeepFace
-        _deepface_instance = DeepFace
-    return _deepface_instance
-
-# Configuração do executável do Tesseract OCR (Windows)
-if os.name == "nt":  # Windows
+# Configuração Tesseract OCR (Windows)
+if os.name == "nt":
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-
-# =========================
-# FORM RECENSEAMENTO
-# =========================
+# ======================
+# Funções utilitárias
+# ======================
 def normalizar_texto(texto):
     if not texto:
         return ""
-
-    # Remove acentos
     texto = unicodedata.normalize("NFKD", texto)
     texto = texto.encode("ASCII", "ignore").decode("ASCII")
-
-    # Maiúsculas
     texto = texto.upper()
-
-    # Remove caracteres estranhos
     texto = re.sub(r"[^A-Z\s]", " ", texto)
-
-    # Remove espaços duplicados
     texto = re.sub(r"\s+", " ", texto).strip()
-
     return texto
 
 def normalizar_texto_ocr(texto):
@@ -67,6 +34,37 @@ def normalizar_texto_ocr(texto):
     texto = re.sub(r"[^A-Z0-9]", "", texto)
     return texto
 
+def extrair_numero_bi(texto):
+    texto = normalizar_texto_ocr(texto)
+    match = re.search(r"\d{11,13}[A-Z]?", texto)
+    if match:
+        return match.group()
+    match = re.search(r"\d{11,13}", texto)
+    if match:
+        return match.group()
+    return None
+
+def extrair_texto_do_bi(bi_file):
+    if hasattr(bi_file, 'path'):
+        caminho = bi_file.path
+    elif hasattr(bi_file, 'temporary_file_path'):
+        caminho = bi_file.temporary_file_path()
+    elif isinstance(bi_file, str):
+        caminho = bi_file
+    else:
+        raise ValidationError("Arquivo do BI inválido.")
+
+    if caminho.lower().endswith(".pdf"):
+        paginas = convert_from_path(caminho)
+        texto = "".join(pytesseract.image_to_string(p) for p in paginas)
+    else:
+        img = Image.open(caminho)
+        texto = pytesseract.image_to_string(img)
+    return texto
+
+# ==========================
+# FORMULÁRIO RECENSEAMENTO
+# ==========================
 class RecenseamentoForm(forms.ModelForm):
     class Meta:
         model = Recenseamento
@@ -86,97 +84,36 @@ class RecenseamentoForm(forms.ModelForm):
 
     def clean_data_nascimento(self):
         data = self.cleaned_data.get("data_nascimento")
-        hoje = date.today()
-        idade = hoje.year - data.year - ((hoje.month, hoje.day) < (data.month, data.day))
+        if not data:
+            raise ValidationError("Data de nascimento é obrigatória.")
+        idade = date.today().year - data.year - ((date.today().month, date.today().day) < (data.month, data.day))
         if idade < 18 or idade > 35:
             raise ValidationError("A idade permitida para o recenseamento é entre 18 e 35 anos.")
         self.cleaned_data["idade"] = idade
         return data
 
-    def extrair_texto_do_bi(self, bi_file):
-        if hasattr(bi_file, 'path'):
-            caminho = bi_file.path
-        elif hasattr(bi_file, 'temporary_file_path'):
-            caminho = bi_file.temporary_file_path()
-        elif isinstance(bi_file, str):
-            caminho = bi_file
-        else:
-            raise ValidationError("Arquivo do BI inválido.")
-
-        if caminho.lower().endswith(".pdf"):
-            paginas = convert_from_path(caminho)
-            texto = ""
-            for pagina in paginas:
-                texto += pytesseract.image_to_string(pagina)
-        else:
-            img = Image.open(caminho)
-            texto = pytesseract.image_to_string(img)
-        return texto
-
-    def extrair_numero_bi(texto):
-        texto = normalizar_texto_ocr(texto)
-
-        # padrão comum: 11–13 dígitos + letra final
-        match = re.search(r"\d{11,13}[A-Z]", texto)
-        if match:
-            return match.group()
-
-        # fallback: só números longos
-        match = re.search(r"\d{11,13}", texto)
-        if match:
-            return match.group()
-
-        return None
-
     def clean(self):
         cleaned_data = super().clean()
+        if not settings.ENABLE_OCR:
+            return cleaned_data
+
         nome_form = cleaned_data.get("nome_completo")
         bi_file = cleaned_data.get("documento_identidade")
-        foto_user = cleaned_data.get("foto_capturada")
-
-        bi_path = None  # apenas para ficheiros temporários locais
+        bi_path = None
 
         try:
-            # ===============================
-            # Validar BI + Nome (apenas se upload novo)
-            # ===============================
             if bi_file and nome_form:
-                # ✔ Apenas processa se for upload do utilizador (não Cloudinary)
-                if hasattr(bi_file, "file"):
-                    bi_path = salvar_temp_upload(bi_file)
+                bi_path = salvar_temp_upload(bi_file) if hasattr(bi_file, "chunks") else bi_file
+                texto_bi = extrair_texto_do_bi(bi_path)
+                numero_bi = extrair_numero_bi(texto_bi)
+                if not numero_bi:
+                    raise ValidationError("Não foi possível identificar o número do BI.")
+                cleaned_data["bi"] = numero_bi
 
-                    texto_bi = self.extrair_texto_do_bi(bi_path)
-
-                    # Extrair número do BI
-                    numero_bi = extrair_numero_bi(texto_bi)
-                    if numero_bi:
-                        cleaned_data["bi"] = numero_bi
-                    else:
-                        raise ValidationError(
-                            "Não foi possível identificar o número do BI. "
-                            "Certifique-se de que o documento está legível."
-                        )
-
-                    # Normalizar e validar nome
-                    nome_normalizado = normalizar_texto(nome_form)
-                    texto_normalizado = normalizar_texto(texto_bi)
-                    if nome_normalizado not in texto_normalizado:
-                        raise ValidationError(
-                            "O nome informado não coincide com o documento de identidade."
-                        )
-
-                # ✔ Se o arquivo já está no Cloudinary, não valida OCR novamente
-                # (evita erro 500 e acessos inválidos ao sistema de ficheiros)
-
-        except ValidationError:
-            raise
-        except Exception as e:
-            raise ValidationError(f"Erro ao validar identidade: {str(e)}")
+                if normalizar_texto(nome_form) not in normalizar_texto(texto_bi):
+                    raise ValidationError("O nome informado não coincide com o BI.")
 
         finally:
-            # ===============================
-            # Limpar APENAS ficheiros temporários locais
-            # ===============================
             if bi_path and os.path.exists(bi_path):
                 os.remove(bi_path)
 
@@ -184,32 +121,27 @@ class RecenseamentoForm(forms.ModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        # Atualiza o campo bi com o valor extraído no clean()
         if "bi" in self.cleaned_data:
             instance.bi = self.cleaned_data["bi"]
         if commit:
             instance.save()
         return instance
 
-
-
-
-
-# =========================
-# FORM COMPLETAR PERFIL CIDADÃO
-# =========================
+# ==========================
+# FORMULÁRIO PERFIL CIDADÃO (>35 anos)
+# ==========================
 class CompletarPerfilCidadaoForm(forms.ModelForm):
     class Meta:
         model = PerfilCidadao
         fields = ("nome_completo", "data_nascimento", "numero_bi", "bi", "foto", "telefone", "email", "dados_confirmados")
         widgets = {
-            "nome_completo": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nome completo conforme BI"}),
+            "nome_completo": forms.TextInput(attrs={"class": "form-control"}),
             "data_nascimento": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
-            "numero_bi": forms.TextInput(attrs={"class": "form-control", "placeholder": "Número do BI"}),
+            "numero_bi": forms.TextInput(attrs={"class": "form-control"}),
             "bi": forms.ClearableFileInput(attrs={"class": "form-control", "accept": ".pdf,.jpg,.jpeg,.png"}),
             "foto": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "image/*"}),
-            "telefone": forms.TextInput(attrs={"class": "form-control", "placeholder": "Telefone"}),
-            "email": forms.EmailInput(attrs={"class": "form-control", "placeholder": "Email"}),
+            "telefone": forms.TextInput(attrs={"class": "form-control"}),
+            "email": forms.EmailInput(attrs={"class": "form-control"}),
             "dados_confirmados": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
@@ -217,91 +149,40 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
         data = self.cleaned_data.get("data_nascimento")
         if not data:
             raise ValidationError("Data de nascimento é obrigatória.")
-        hoje = date.today()
-        idade = hoje.year - data.year - ((hoje.month, hoje.day) < (data.month, data.day))
+        idade = date.today().year - data.year - ((date.today().month, date.today().day) < (data.month, data.day))
         if idade < 18:
             raise ValidationError("Idade mínima é 18 anos.")
         self.cleaned_data["idade"] = idade
         return data
 
-    def extrair_texto_do_bi(self, bi_file):
-        if hasattr(bi_file, 'path'):
-            caminho = bi_file.path
-        elif hasattr(bi_file, 'temporary_file_path'):
-            caminho = bi_file.temporary_file_path()
-        elif isinstance(bi_file, str):
-            caminho = bi_file
-        else:
-            raise ValidationError("Arquivo do BI inválido.")
-
-        if caminho.lower().endswith(".pdf"):
-            paginas = convert_from_path(caminho)
-            texto = ""
-            for pagina in paginas:
-                texto += pytesseract.image_to_string(pagina)
-        else:
-            img = Image.open(caminho)
-            texto = pytesseract.image_to_string(img)
-        return texto
-
     def clean(self):
         cleaned_data = super().clean()
         nome_form = cleaned_data.get("nome_completo")
         bi_file = cleaned_data.get("bi")
-        foto_user = cleaned_data.get("foto")
-
         bi_path = None
-        foto_path = None
 
         try:
             if bi_file and nome_form:
-                if hasattr(bi_file, 'name'):
-                    bi_path = salvar_temp_upload(bi_file)
-                elif isinstance(bi_file, str):
-                    bi_path = bi_file
-                else:
-                    raise ValidationError("Arquivo do BI inválido.")
-
-                texto_bi = self.extrair_texto_do_bi(bi_path)
-
-                # Extrair número do BI (13 dígitos)
+                bi_path = salvar_temp_upload(bi_file) if hasattr(bi_file, "chunks") else bi_file
+                texto_bi = extrair_texto_do_bi(bi_path)
                 numero_bi = extrair_numero_bi(texto_bi)
-                if numero_bi:
-                    cleaned_data["numero_bi"] = numero_bi  # ✅ Corrigido
-                else:
-                    raise ValidationError(
-                        "Não foi possível extrair o número do BI do documento. "
-                        "Certifique-se de que a imagem está legível."
-                    )
+                if not numero_bi:
+                    raise ValidationError("Não foi possível extrair o número do BI.")
+                cleaned_data["numero_bi"] = numero_bi
 
-                # Validar nome
-                nome_normalizado = normalizar_texto(nome_form)
-                texto_normalizado = normalizar_texto(texto_bi)
-                if nome_normalizado not in texto_normalizado:
+                if normalizar_texto(nome_form) not in normalizar_texto(texto_bi):
                     raise ValidationError("O nome informado não coincide com o documento de identidade.")
-
-            # Validar foto
-            if bi_file and foto_user:
-                if not bi_path:
-                    bi_path = salvar_temp_upload(bi_file) if hasattr(bi_file, 'name') else bi_file
-                foto_path = salvar_temp_upload(foto_user) if hasattr(foto_user, 'name') else foto_user
-                
-                pass
-                
-
         finally:
-            if bi_path and hasattr(bi_file, 'name') and os.path.exists(bi_path):
+            if bi_path and os.path.exists(bi_path):
                 os.remove(bi_path)
-            if foto_path and hasattr(foto_user, 'name') and os.path.exists(foto_path):
-                os.remove(foto_path)
 
-        return self.cleaned_data
+        return cleaned_data
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        numero_bi_extraido = self.cleaned_data.get("numero_bi")  # ✅ Aqui pega o valor correto
+        numero_bi_extraido = self.cleaned_data.get("numero_bi")
         if numero_bi_extraido:
             instance.numero_bi = numero_bi_extraido
         if commit:
             instance.save()
-        return instance #from pyexpat.errors import messages
+        return instance

@@ -1,5 +1,8 @@
 # recenseamento/utils/ocr.py
+import os
 import re
+from PIL import Image
+import pytesseract
 
 def normalizar_texto_ocr(texto):
     texto = texto.upper()
@@ -7,17 +10,15 @@ def normalizar_texto_ocr(texto):
     texto = re.sub(r"[^A-Z0-9]", "", texto)
     return texto
 
-def extrair_numero_bi(texto):
-    texto = normalizar_texto_ocr(texto)
+def extrair_texto_do_bi(caminho):
+    if not os.path.exists(caminho):
+        raise Exception(f"Arquivo não encontrado: {caminho}")
 
-    # padrão mais comum em BI moçambicano
-    match = re.search(r"\d{11,13}[A-Z]", texto)
-    if match:
-        return match.group()
+    with Image.open(caminho) as img:
+        img = img.convert("RGB")
+        texto = pytesseract.image_to_string(
+            img,
+            lang="por"
+        )
 
-    # fallback apenas números
-    match = re.search(r"\d{11,13}", texto)
-    if match:
-        return match.group()
-
-    return None
+    return texto

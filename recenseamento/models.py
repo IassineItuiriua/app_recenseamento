@@ -4,13 +4,6 @@ from django.conf import settings
 from datetime import date, datetime
 from cloudinary.models import CloudinaryField
 
-class PerfilCidadao(models.Model):
-    ...
-    foto = CloudinaryField("foto", blank=True, null=True)
-    bi = CloudinaryField("bi", blank=True, null=True)
-
-
-
 
 def gerar_nim():
     ano = datetime.now().year

@@ -1,3 +1,4 @@
+# usuarios/views.py
 import os
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, render, redirect
@@ -8,19 +9,16 @@ from django.contrib import messages
 from django.conf import settings
 from datetime import date
 import logging
-import pytesseract
-from notificacoes.accoes import apos_completar_perfil, apos_recenseamento, apos_registro
 from .forms import CompletarPerfilUsuarioForm, UserRegistrationForm
 from recenseamento.forms import RecenseamentoForm, CompletarPerfilCidadaoForm
 from recenseamento.models import Recenseamento, PerfilCidadao
 
-
-# Configuração do executável do Tesseract OCR (Windows)
-if os.name == "nt":  # Windows
+# OCR Tesseract Windows
+import pytesseract
+if os.name == "nt":
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 logger = logging.getLogger(__name__)
-
 
 # ======================================================
 # CADASTRO
@@ -31,6 +29,7 @@ def cadastro(request):
         if form.is_valid():
             novo_usuario = form.save()
             try:
+                from notificacoes.accoes import apos_registro
                 apos_registro(novo_usuario)
             except Exception as e:
                 logger.error(f"Erro ao enviar email de registro: {e}", exc_info=True)
@@ -51,16 +50,10 @@ def login_view(request):
         next_url = request.POST.get("next", "")
         if form.is_valid():
             login(request, form.get_user())
-            if next_url and next_url.startswith("/"):
-                return redirect(next_url)
-            return redirect("usuarios:painel")
+            return redirect(next_url if next_url.startswith("/") else "usuarios:painel")
     else:
         form = AuthenticationForm()
-    return render(
-        request,
-        "usuarios/login.html",
-        {"form": form, "next": next_url},
-    )
+    return render(request, "usuarios/login.html", {"form": form, "next": next_url})
 
 
 # ======================================================
@@ -77,10 +70,10 @@ def logout_view(request):
 @login_required
 def completar_perfil(request):
     usuario = request.user
-
     perfil = PerfilCidadao.objects.filter(user=usuario).first()
     recenseamento = Recenseamento.objects.filter(usuario=usuario).first()
 
+    # Calcula idade se existir data de nascimento
     idade = None
     data_nasc = None
     if recenseamento and recenseamento.data_nascimento:
@@ -96,22 +89,21 @@ def completar_perfil(request):
         form_cidadao = CompletarPerfilCidadaoForm(request.POST, request.FILES, instance=perfil)
 
         def render_forms():
-            return render(
-                request,
-                "usuarios/completar_perfil.html",
-                {
-                    "form_usuario": form_usuario,
-                    "form_recenseamento": form_recenseamento,
-                    "form_cidadao": form_cidadao,
-                    "idade": idade or 0,
-                },
-            )
+            return render(request, "usuarios/completar_perfil.html", {
+                "form_usuario": form_usuario,
+                "form_recenseamento": form_recenseamento,
+                "form_cidadao": form_cidadao,
+                "idade": idade or 0,
+            })
 
+        # Atualiza dados básicos do usuário
         if not form_usuario.is_valid():
             return render_forms()
         form_usuario.save()
 
+        # Define idade se ainda não definida
         if idade is None:
+            data_nasc = None
             if form_recenseamento.is_valid():
                 data_nasc = form_recenseamento.cleaned_data.get("data_nascimento")
             if not data_nasc and form_cidadao.is_valid():
@@ -119,32 +111,25 @@ def completar_perfil(request):
             if not data_nasc:
                 messages.error(request, "Informe a data de nascimento.")
                 return render_forms()
-            idade = date.today().year - data_nasc.year - (
-                (date.today().month, date.today().day) < (data_nasc.month, data_nasc.day)
-            )
+            idade = date.today().year - data_nasc.year - ((date.today().month, date.today().day) < (data_nasc.month, data_nasc.day))
 
-        # =================================================
-        # Usuários até 35 anos → Recenseamento
-        # =================================================
+        # ================= Recenseamento (≤35 anos) =================
         if idade <= 35:
             if not form_recenseamento.is_valid():
                 return render_forms()
             rec = form_recenseamento.save(commit=False)
             rec.usuario = usuario
             rec.save()
-
             try:
                 if rec.nim:
+                    from notificacoes.accoes import apos_recenseamento
                     apos_recenseamento(usuario, rec.nim)
             except Exception as e:
                 logger.error(f"Erro ao enviar email de recenseamento: {e}", exc_info=True)
-
             messages.success(request, "Recenseamento concluído com sucesso.")
             return redirect("usuarios:painel")
 
-        # =================================================
-        # Usuários +35 anos → Perfil Cidadão
-        # =================================================
+        # ================= Perfil Cidadão (>35 anos) =================
         if not form_cidadao.is_valid():
             return render_forms()
 
@@ -158,15 +143,15 @@ def completar_perfil(request):
         perfil.user = usuario
         perfil.status_validacao = "PENDENTE"
 
-        perfil_ficou_completo = perfil.completo() and not perfil.acao_completada
+        perfil_completo = perfil.completo() and not perfil.acao_completada
 
         try:
             perfil.save()
         except IntegrityError:
-            messages.error(request, "Número do BI já está registrado para outro usuário.")
+            messages.error(request, "Número do BI já registrado para outro usuário.")
             return render_forms()
 
-        # Sincronizar nome
+        # Sincroniza nome
         nome_completo = perfil.nome_completo.strip().split(" ", 1)
         usuario.first_name = nome_completo[0]
         usuario.last_name = nome_completo[1] if len(nome_completo) > 1 else ""
@@ -174,9 +159,10 @@ def completar_perfil(request):
         perfil.refresh_from_db()
 
         # Envio de email seguro
-        if perfil_ficou_completo:
+        if perfil_completo:
             try:
                 with transaction.atomic():
+                    from notificacoes.accoes import apos_completar_perfil
                     apos_completar_perfil(usuario)
                     perfil.acao_completada = True
                     perfil.save(update_fields=["acao_completada"])
@@ -186,22 +172,18 @@ def completar_perfil(request):
         messages.success(request, "Perfil atualizado com sucesso.")
         return redirect("usuarios:painel")
 
-    # ---------------------------- GET ----------------------------
+    # ---------------- GET ----------------
     else:
         form_usuario = CompletarPerfilUsuarioForm(instance=usuario)
         form_recenseamento = RecenseamentoForm(instance=recenseamento)
         form_cidadao = CompletarPerfilCidadaoForm(instance=perfil)
 
-    return render(
-        request,
-        "usuarios/completar_perfil.html",
-        {
-            "form_usuario": form_usuario,
-            "form_recenseamento": form_recenseamento,
-            "form_cidadao": form_cidadao,
-            "idade": idade or 0,
-        },
-    )
+    return render(request, "usuarios/completar_perfil.html", {
+        "form_usuario": form_usuario,
+        "form_recenseamento": form_recenseamento,
+        "form_cidadao": form_cidadao,
+        "idade": idade or 0,
+    })
 
 
 # ======================================================
@@ -212,15 +194,11 @@ def painel(request):
     user = request.user
     recenseamento = Recenseamento.objects.filter(usuario=user).first()
     perfil = PerfilCidadao.objects.filter(user=user).first()
-    return render(
-        request,
-        "usuarios/painel.html",
-        {"recenseamento": recenseamento, "perfil": perfil},
-    )
+    return render(request, "usuarios/painel.html", {"recenseamento": recenseamento, "perfil": perfil})
 
 
 # ======================================================
-# VALIDAR FOTO CIDADÃO (PRODUÇÃO SEGURO)
+# VALIDAR FOTO CIDADÃO (Face Recognition)
 # ======================================================
 @login_required
 def validar_foto_cidadao(request, perfil_id):
@@ -234,7 +212,6 @@ def validar_foto_cidadao(request, perfil_id):
         return redirect("usuarios:painel")
 
     try:
-        # ⚠️ Tratamento seguro para arquivos grandes
         verificado = False
         if perfil.bi and perfil.foto:
             verificado = verificar_foto(perfil.bi.path, perfil.foto.path)
@@ -249,4 +226,3 @@ def validar_foto_cidadao(request, perfil_id):
         messages.error(request, "Ocorreu um erro ao validar a foto. Tente novamente.")
 
     return redirect("usuarios:painel")
-
