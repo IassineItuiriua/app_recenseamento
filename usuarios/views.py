@@ -231,7 +231,7 @@ def validar_foto_cidadao(request, perfil_id):
         # ⚠️ Tratamento seguro para arquivos grandes
         verificado = False
         if perfil.bi and perfil.foto:
-            verificado = verificar_foto(perfil.bi.url, perfil.foto.url)
+            verificado = verificar_foto(perfil.bi.path, perfil.foto.path)
 
         perfil.foto_verificada = verificado
         perfil.status_validacao = "VALIDADO" if verificado else "REJEITADO"
@@ -243,3 +243,4 @@ def validar_foto_cidadao(request, perfil_id):
         messages.error(request, "Ocorreu um erro ao validar a foto. Tente novamente.")
 
     return redirect("usuarios:painel")
+

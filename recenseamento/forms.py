@@ -87,7 +87,7 @@ class RecenseamentoForm(forms.ModelForm):
 
     def extrair_texto_do_bi(self, bi_file):
         if hasattr(bi_file, 'path'):
-            caminho = bi_file.url
+            caminho = bi_file.path
         elif hasattr(bi_file, 'temporary_file_path'):
             caminho = bi_file.temporary_file_path()
         elif isinstance(bi_file, str):
@@ -126,48 +126,51 @@ class RecenseamentoForm(forms.ModelForm):
         bi_file = cleaned_data.get("documento_identidade")
         foto_user = cleaned_data.get("foto_capturada")
 
-        bi_path = None
-        foto_path = None
+        bi_path = None  # apenas para ficheiros temporários locais
 
         try:
-            # Validar nome e extrair BI
+            # ===============================
+            # Validar BI + Nome (apenas se upload novo)
+            # ===============================
             if bi_file and nome_form:
-                # Salvar temporariamente se for UploadedFile
-                if hasattr(bi_file, 'name'):
+                # ✔ Apenas processa se for upload do utilizador (não Cloudinary)
+                if hasattr(bi_file, "file"):
                     bi_path = salvar_temp_upload(bi_file)
-                elif isinstance(bi_file, str):
-                    bi_path = bi_file
-                else:
-                    raise ValidationError("Arquivo do BI inválido.")
 
-                texto_bi = self.extrair_texto_do_bi(bi_path)
+                    texto_bi = self.extrair_texto_do_bi(bi_path)
 
-                # Extrair número do BI via regex (13 dígitos)
-                numero_bi = extrair_numero_bi(texto_bi)
-                if numero_bi:
-                    cleaned_data["bi"] = numero_bi
-                else:
-                    raise ValidationError(
-                        "Não foi possível identificar o número do BI. "
-                        "Certifique-se de que o documento está legível."
-                    )
+                    # Extrair número do BI
+                    numero_bi = extrair_numero_bi(texto_bi)
+                    if numero_bi:
+                        cleaned_data["bi"] = numero_bi
+                    else:
+                        raise ValidationError(
+                            "Não foi possível identificar o número do BI. "
+                            "Certifique-se de que o documento está legível."
+                        )
 
+                    # Normalizar e validar nome
+                    nome_normalizado = normalizar_texto(nome_form)
+                    texto_normalizado = normalizar_texto(texto_bi)
+                    if nome_normalizado not in texto_normalizado:
+                        raise ValidationError(
+                            "O nome informado não coincide com o documento de identidade."
+                        )
 
-                # Normalizar e validar nome
-                nome_normalizado = normalizar_texto(nome_form)
-                texto_normalizado = normalizar_texto(texto_bi)
-                if nome_normalizado not in texto_normalizado:
-                    raise ValidationError("O nome informado não coincide com o documento de identidade.")
+                # ✔ Se o arquivo já está no Cloudinary, não valida OCR novamente
+                # (evita erro 500 e acessos inválidos ao sistema de ficheiros)
 
         except ValidationError:
             raise
         except Exception as e:
             raise ValidationError(f"Erro ao validar identidade: {str(e)}")
+
         finally:
-            if bi_path and hasattr(bi_file, 'name') and os.path.exists(bi_path):
+            # ===============================
+            # Limpar APENAS ficheiros temporários locais
+            # ===============================
+            if bi_path and os.path.exists(bi_path):
                 os.remove(bi_path)
-            if foto_path and hasattr(foto_user, 'name') and os.path.exists(foto_path):
-                os.remove(foto_path)
 
         return cleaned_data
 
@@ -215,7 +218,7 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
 
     def extrair_texto_do_bi(self, bi_file):
         if hasattr(bi_file, 'path'):
-            caminho = bi_file.url
+            caminho = bi_file.path
         elif hasattr(bi_file, 'temporary_file_path'):
             caminho = bi_file.temporary_file_path()
         elif isinstance(bi_file, str):
@@ -279,9 +282,9 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
                 
 
         finally:
-            if bi_path and hasattr(bi_file, 'name') and os.url.exists(bi_path):
+            if bi_path and hasattr(bi_file, 'name') and os.path.exists(bi_path):
                 os.remove(bi_path)
-            if foto_path and hasattr(foto_user, 'name') and os.url.exists(foto_path):
+            if foto_path and hasattr(foto_user, 'name') and os.path.exists(foto_path):
                 os.remove(foto_path)
 
         return self.cleaned_data
@@ -293,4 +296,4 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
             instance.numero_bi = numero_bi_extraido
         if commit:
             instance.save()
-        return instance
+        return instance #from pyexpat.errors import messages
