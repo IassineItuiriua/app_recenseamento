@@ -16,7 +16,6 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.units import cm
 from django.conf import settings
 from .forms import SolicitarDocumentoForm
-# from .models import Documento
 from recenseamento.models import Recenseamento, PerfilCidadao
 from django.shortcuts import redirect
 from django.contrib.auth.mixins import LoginRequiredMixin

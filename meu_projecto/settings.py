@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     'usuarios',
     'recenseamento',
     'documento',
+    'cloudinary',
+    'cloudinary_storage',
 ]
 
 # ----------------------------
@@ -164,8 +166,10 @@ EMAIL_TIMEOUT = 30
 # Outras configs
 # ----------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
 FACE_RECOGNITION_ENABLED = os.getenv("FACE_RECOGNITION_ENABLED", "False").lower() == "true"
+
 
 # Limite de upload
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760
@@ -178,4 +182,11 @@ LOGGING = {
     "version": 1,
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": "ERROR"},
+}
+
+
+CLOUDINARY_STORAGE = {
+    "CLOUD_NAME": os.getenv("CLOUDINARY_CLOUD_NAME"),
+    "API_KEY": os.getenv("CLOUDINARY_API_KEY"),
+    "API_SECRET": os.getenv("CLOUDINARY_API_SECRET"),
 }

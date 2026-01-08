@@ -2,6 +2,13 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.conf import settings
 from datetime import date, datetime
+from cloudinary.models import CloudinaryField
+
+class PerfilCidadao(models.Model):
+    ...
+    foto = CloudinaryField("foto", blank=True, null=True)
+    bi = CloudinaryField("bi", blank=True, null=True)
+
 
 
 
@@ -38,9 +45,19 @@ class Recenseamento(models.Model):
     email = models.EmailField()
     contacto_familiar = models.CharField(max_length=150)
 
-    
-    documento_identidade = models.FileField(upload_to='documentos_identidade_uploads/', null=True, blank=True)
-    foto_capturada = models.ImageField(upload_to='selfies/', null=True, blank=True)
+    documento_identidade = CloudinaryField(
+        'documento_identidade',
+        folder='documentos/identidade',
+        null=True,
+        blank=True
+    )
+    foto_capturada = CloudinaryField(
+        'foto_capturada',
+        folder='selfies',
+        null=True,
+        blank=True
+    )
+
 
     foi_submetido_exame = models.BooleanField(null=True, blank=True)
     resultado_exame = models.CharField(
@@ -90,8 +107,18 @@ class Recenseamento(models.Model):
 
 class PerfilCidadao(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    bi = models.FileField(upload_to="documentos/bi/", null=True, blank=True)
-    foto = models.ImageField(upload_to="perfil_fotos/", null=True, blank=True)
+    bi = CloudinaryField(
+        'bi',
+        folder='documentos/bi',
+        null=True,
+        blank=True
+    )
+    foto = CloudinaryField(
+        'foto',
+        folder='perfil/fotos',
+        null=True,
+        blank=True
+    )
 
     dados_confirmados = models.BooleanField(default=False)
     data_nascimento = models.DateField(null=True, blank=True)

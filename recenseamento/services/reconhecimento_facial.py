@@ -1,5 +1,9 @@
 def verificar_foto(bi_path, foto_path):
-    from deepface import DeepFace  # ✅ lazy import
+    try:
+        from deepface import DeepFace  # lazy + protegido
+    except ImportError:
+        # DeepFace não instalado (Render / produção)
+        return False
 
     try:
         resultado = DeepFace.verify(

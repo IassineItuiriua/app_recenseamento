@@ -87,7 +87,7 @@ class RecenseamentoForm(forms.ModelForm):
 
     def extrair_texto_do_bi(self, bi_file):
         if hasattr(bi_file, 'path'):
-            caminho = bi_file.path
+            caminho = bi_file.url
         elif hasattr(bi_file, 'temporary_file_path'):
             caminho = bi_file.temporary_file_path()
         elif isinstance(bi_file, str):
@@ -215,7 +215,7 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
 
     def extrair_texto_do_bi(self, bi_file):
         if hasattr(bi_file, 'path'):
-            caminho = bi_file.path
+            caminho = bi_file.url
         elif hasattr(bi_file, 'temporary_file_path'):
             caminho = bi_file.temporary_file_path()
         elif isinstance(bi_file, str):
@@ -279,9 +279,9 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
                 
 
         finally:
-            if bi_path and hasattr(bi_file, 'name') and os.path.exists(bi_path):
+            if bi_path and hasattr(bi_file, 'name') and os.url.exists(bi_path):
                 os.remove(bi_path)
-            if foto_path and hasattr(foto_user, 'name') and os.path.exists(foto_path):
+            if foto_path and hasattr(foto_user, 'name') and os.url.exists(foto_path):
                 os.remove(foto_path)
 
         return self.cleaned_data
@@ -293,4 +293,4 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
             instance.numero_bi = numero_bi_extraido
         if commit:
             instance.save()
-        return instance #from pyexpat.errors import messages
+        return instance
