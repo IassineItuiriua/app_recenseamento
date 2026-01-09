@@ -12,6 +12,8 @@ import logging
 from .forms import CompletarPerfilUsuarioForm, UserRegistrationForm
 from recenseamento.forms import RecenseamentoForm, CompletarPerfilCidadaoForm
 from recenseamento.models import Recenseamento, PerfilCidadao
+from .forms import EmailAuthenticationForm
+from django.contrib.auth import login
 
 # OCR Tesseract Windows
 import pytesseract
@@ -36,6 +38,7 @@ def cadastro(request):
             messages.success(request, "Conta criada com sucesso. Faça login.")
             return redirect("usuarios:login")
     else:
+
         form = UserRegistrationForm()
     return render(request, "usuarios/cadastro.html", {"form": form})
 
@@ -43,17 +46,22 @@ def cadastro(request):
 # ======================================================
 # LOGIN
 # ======================================================
+
+
 def login_view(request):
     next_url = request.GET.get("next", "")
     if request.method == "POST":
-        form = AuthenticationForm(request, data=request.POST)
+        form = EmailAuthenticationForm(request, data=request.POST)
         next_url = request.POST.get("next", "")
         if form.is_valid():
             login(request, form.get_user())
             return redirect(next_url if next_url.startswith("/") else "usuarios:painel")
+        else:
+            messages.error(request, "Email ou password incorretos.")
     else:
-        form = AuthenticationForm()
+        form = EmailAuthenticationForm()
     return render(request, "usuarios/login.html", {"form": form, "next": next_url})
+
 
 
 # ======================================================
