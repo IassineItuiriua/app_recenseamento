@@ -29,6 +29,11 @@
         {% endif %}
 
         {# Campos do formulário #}
+        <div class="mb-3">
+          <label class="form-label">Nome de Utilizador</label>
+          {{ form.username }}
+          {{ form.username.errors }}
+        </div>
 
         <div class="mb-3">
           <label class="form-label">Nome</label>
