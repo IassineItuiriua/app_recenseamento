@@ -202,3 +202,9 @@ cloudinary.config(
 )
 
 ENABLE_OCR = os.getenv("ENABLE_OCR", "false") == "true"
+
+
+AUTHENTICATION_BACKENDS = [
+    "usuarios.backends.EmailBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
