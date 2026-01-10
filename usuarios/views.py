@@ -4,7 +4,6 @@ from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
 from django.conf import settings
 from datetime import date
@@ -13,7 +12,6 @@ from .forms import CompletarPerfilUsuarioForm, UserRegistrationForm
 from recenseamento.forms import RecenseamentoForm, CompletarPerfilCidadaoForm
 from recenseamento.models import Recenseamento, PerfilCidadao
 from .forms import EmailAuthenticationForm
-from django.contrib.auth import login
 
 # OCR Tesseract Windows
 import pytesseract
@@ -42,20 +40,19 @@ def cadastro(request):
 # ======================================================
 
 
-# usuarios/views.py
-from django.contrib.auth import login
-from .forms import EmailAuthenticationForm
-
 def login_view(request):
     next_url = request.GET.get("next", "")
+
     if request.method == "POST":
-        form = EmailAuthenticationForm(request, data=request.POST)
+        form = EmailAuthenticationForm(request.POST, request=request)
         if form.is_valid():
             login(request, form.get_user())
             return redirect(next_url if next_url.startswith("/") else "usuarios:painel")
     else:
         form = EmailAuthenticationForm()
+
     return render(request, "usuarios/login.html", {"form": form, "next": next_url})
+
 
 
 
