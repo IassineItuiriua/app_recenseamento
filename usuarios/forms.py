@@ -1,9 +1,8 @@
 # usuarios/forms.py
 from django import forms
-from django.contrib.auth.forms import AuthenticationForm
 from .models import CustomUser
 from django.contrib.auth import authenticate
-from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.forms import UserCreationForm
 # =====================================================
 #   REGISTO / CADASTRO DE USUÁRIO /LOGIN POR EMAIL
 # =====================================================
@@ -53,40 +52,19 @@ class CompletarPerfilUsuarioForm(forms.ModelForm):
         }
 
 
-class UserRegistrationForm(forms.ModelForm):
-    password1 = forms.CharField(
-        label="Password",
-        widget=forms.PasswordInput(attrs={"class": "form-control"})
-    )
-    password2 = forms.CharField(
-        label="Confirmar Password",
-        widget=forms.PasswordInput(attrs={"class": "form-control"})
-    )
+class UserRegistrationForm(UserCreationForm):
+    email = forms.EmailField(label="Email", widget=forms.EmailInput(attrs={"class": "form-control"}))
+    first_name = forms.CharField(widget=forms.TextInput(attrs={"class": "form-control"}))
+    last_name = forms.CharField(widget=forms.TextInput(attrs={"class": "form-control"}))
+    telefone = forms.CharField(required=False, widget=forms.TextInput(attrs={"class": "form-control"}))
 
     class Meta:
         model = CustomUser
-        fields = ("first_name", "last_name", "email", "telefone")
-
-    def clean_email(self):
-        email = self.cleaned_data.get("email")
-        if CustomUser.objects.filter(email=email).exists():
-            raise forms.ValidationError("Já existe uma conta com este email.")
-        return email
-
-    def clean(self):
-        cleaned = super().clean()
-        p1 = cleaned.get("password1")
-        p2 = cleaned.get("password2")
-
-        if p1 != p2:
-            raise forms.ValidationError("As passwords não coincidem.")
-
-        validate_password(p1)
-        return cleaned
+        fields = ("email", "first_name", "last_name", "telefone", "password1", "password2")
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.set_password(self.cleaned_data["password1"])
+        user.email = self.cleaned_data["email"]
         if commit:
             user.save()
         return user
