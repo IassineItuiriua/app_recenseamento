@@ -137,7 +137,11 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Diretórios extras de estáticos
-STATICFILES_DIRS = [BASE_DIR / "static"]
+if (BASE_DIR / "static").exists():
+    STATICFILES_DIRS = [BASE_DIR / "static"]
+else:
+    STATICFILES_DIRS = []
+
 
 # ----------------------------
 # Arquivos de mídia
