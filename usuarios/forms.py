@@ -8,6 +8,8 @@ from django.contrib.auth.forms import UserCreationForm
 #   REGISTO / CADASTRO DE USUÁRIO /LOGIN POR EMAIL
 # =====================================================
 
+# usuarios/forms.py
+
 class EmailAuthenticationForm(AuthenticationForm):
     username = forms.EmailField(
         label="Email",
@@ -15,14 +17,14 @@ class EmailAuthenticationForm(AuthenticationForm):
     )
 
     def clean(self):
-        email = self.cleaned_data.get('username')  # username é agora email
+        email = self.cleaned_data.get('username')  # username é email
         password = self.cleaned_data.get('password')
 
         if email and password:
             self.user_cache = authenticate(self.request, email=email, password=password)
             if self.user_cache is None:
                 raise forms.ValidationError(
-                    "Por favor introduza o email e password corretos para a conta de equipa. Tenha em atenção às maiúsculas e minúsculas.",
+                    "Por favor introduza o email e password corretos.",
                     code='invalid_login',
                 )
             else:

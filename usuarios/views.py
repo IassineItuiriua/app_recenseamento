@@ -30,15 +30,9 @@ def cadastro(request):
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
             novo_usuario = form.save()
-            try:
-                from notificacoes.accoes import apos_registro
-                apos_registro(novo_usuario)
-            except Exception as e:
-                logger.error(f"Erro ao enviar email de registro: {e}", exc_info=True)
             messages.success(request, "Conta criada com sucesso. Faça login.")
             return redirect("usuarios:login")
     else:
-
         form = UserRegistrationForm()
     return render(request, "usuarios/cadastro.html", {"form": form})
 
@@ -48,16 +42,17 @@ def cadastro(request):
 # ======================================================
 
 
+# usuarios/views.py
+from django.contrib.auth import login
+from .forms import EmailAuthenticationForm
+
 def login_view(request):
     next_url = request.GET.get("next", "")
     if request.method == "POST":
         form = EmailAuthenticationForm(request, data=request.POST)
-        next_url = request.POST.get("next", "")
         if form.is_valid():
             login(request, form.get_user())
             return redirect(next_url if next_url.startswith("/") else "usuarios:painel")
-        else:
-            messages.error(request, "Email ou password incorretos.")
     else:
         form = EmailAuthenticationForm()
     return render(request, "usuarios/login.html", {"form": form, "next": next_url})
