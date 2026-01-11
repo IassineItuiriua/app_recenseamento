@@ -53,7 +53,7 @@ if email and password:
 python manage.py collectstatic --noinput
 
 # 6. Iniciar servidor
-exec gunicorn projecto_inicial.wsgi:application --bind 0.0.0.0:$PORT
+exec gunicorn meu_projecto.wsgi:application --bind 0.0.0.0:$PORT
 
 
 
