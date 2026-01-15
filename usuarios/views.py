@@ -12,6 +12,8 @@ from .forms import CompletarPerfilUsuarioForm, UserRegistrationForm
 from recenseamento.forms import RecenseamentoForm, CompletarPerfilCidadaoForm
 from recenseamento.models import Recenseamento, PerfilCidadao
 from .forms import EmailAuthenticationForm
+from django.contrib.auth.views import PasswordResetView
+from .forms import EmailPasswordResetForm
 
 # OCR Tesseract Windows
 import pytesseract
@@ -233,3 +235,12 @@ def validar_foto_cidadao(request, perfil_id):
         messages.error(request, "Ocorreu um erro ao validar a foto. Tente novamente.")
 
     return redirect("usuarios:painel")
+
+
+class CustomPasswordResetView(PasswordResetView):
+    form_class = EmailPasswordResetForm
+    template_name = "usuarios/password_reset.html"
+    email_template_name = "usuarios/password_reset_email.html"
+    subject_template_name = "usuarios/password_reset_subject.txt"
+    success_url = "/usuarios/password-reset/done/"
+

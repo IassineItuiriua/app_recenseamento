@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.forms import PasswordResetForm
 
 User = get_user_model()
 
@@ -58,3 +59,8 @@ class CompletarPerfilUsuarioForm(forms.ModelForm):
             "first_name": forms.TextInput(attrs={"class": "form-control"}),
             "last_name": forms.TextInput(attrs={"class": "form-control"}),
         }
+
+
+class EmailPasswordResetForm(PasswordResetForm):
+    def get_users(self, email):
+        return User.objects.filter(email__iexact=email, is_active=True)
