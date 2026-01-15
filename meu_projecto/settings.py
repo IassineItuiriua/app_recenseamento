@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Carrega .env apenas localmente (dev)
-if (BASE_DIR / ".env").exists():
-    load_dotenv(BASE_DIR / ".env")
+if (BASE_DIR / ".env.local").exists():
+    load_dotenv(BASE_DIR / ".env.local")
 
 
 # ----------------------------
@@ -102,7 +102,7 @@ else:
     DATABASES = {
         "default": {
             "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
-            "NAME": os.getenv("DB_NAME", "postgres"),
+            "NAME": os.getenv("DB_NAME", "meu_projecto"),
             "USER": os.getenv("DB_USER", "iassine"),
             "PASSWORD": os.getenv("DB_PASSWORD", "iassine123"),
             "HOST": os.getenv("DB_HOST", "db"),

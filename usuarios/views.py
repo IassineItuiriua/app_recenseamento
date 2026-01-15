@@ -40,18 +40,25 @@ def cadastro(request):
 # ======================================================
 
 
+# usuarios/views.py
+
 def login_view(request):
-    next_url = request.GET.get("next", "")
+    next_url = request.GET.get("next") or request.POST.get("next") or ""
 
     if request.method == "POST":
-        form = EmailAuthenticationForm(request.POST, request=request)
+        form = EmailAuthenticationForm(data=request.POST, request=request)
         if form.is_valid():
             login(request, form.get_user())
             return redirect(next_url if next_url.startswith("/") else "usuarios:painel")
     else:
-        form = EmailAuthenticationForm()
+        form = EmailAuthenticationForm(request=request)
 
-    return render(request, "usuarios/login.html", {"form": form, "next": next_url})
+    return render(request, "usuarios/login.html", {
+        "form": form,
+        "next": next_url
+    })
+
+
 
 
 
