@@ -10,8 +10,15 @@ python manage.py migrate contenttypes
 python manage.py migrate admin
 python manage.py migrate sessions
 python manage.py migrate usuarios --fake-initial || true
-python manage.py migrate recenseamento
-python manage.py migrate documento
+# python manage.py migrate recenseamento
+# python manage.py migrate documento
+echo "==> Sincronizando migrations críticas..."
+
+python manage.py showmigrations recenseamento | grep 0002_initial | grep "\[ \]" && \
+python manage.py migrate recenseamento 0002 --fake || true
+
+python manage.py showmigrations documento | grep 0001_initial | grep "\[ \]" && \
+python manage.py migrate documento 0001 --fake || true
 
 # 2. Remover duplicados ANTES de criar o índice unique
 echo "==> Limpando emails duplicados..."
