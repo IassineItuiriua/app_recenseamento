@@ -35,6 +35,10 @@ for u in User.objects.all().order_by('id'):
         seen.add(u.email)
 "
 
+echo "==> Forçando sincronização da migration documento.0002..."
+
+python manage.py migrate documento 0002 --fake || true
+
 # 3. Agora aplicar migrations reais (cria UNIQUE)
 echo "==> Aplicando migrations finais..."
 python manage.py migrate
