@@ -23,6 +23,7 @@ if not SECRET_KEY:
 
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
+
 # Render fornece o domínio do app, adiciona aqui
 ALLOWED_HOSTS = os.getenv(
     "ALLOWED_HOSTS",
