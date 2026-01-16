@@ -26,7 +26,7 @@ DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 # Render fornece o domínio do app, adiciona aqui
 ALLOWED_HOSTS = os.getenv(
     "ALLOWED_HOSTS",
-    "localhost,127.0.0.1"
+    "localhost,127.0.0.1,app-recenseamento.onrender.com"
 ).split(",")
 
 # ----------------------------
