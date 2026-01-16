@@ -19,14 +19,14 @@ urlpatterns = [
 # =========================
 
 path(
-    "password-reset/",
+    "password_reset_form/",
     auth_views.PasswordResetView.as_view(
-        template_name="usuarios/password_reset.html",
+        template_name="usuarios/password_reset_form.html",
         email_template_name="usuarios/password_reset_email.html",
         subject_template_name="usuarios/password_reset_subject.txt",
         success_url="/usuarios/password_reset_done/",
     ),
-    name="password_reset",
+    name="password_reset_form",
 ),
 
 path(
