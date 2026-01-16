@@ -220,3 +220,9 @@ AUTHENTICATION_BACKENDS = [
     "usuarios.backends.EmailBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://app-recenseamento.onrender.com",
+]
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
