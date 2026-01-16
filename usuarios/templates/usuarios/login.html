@@ -38,7 +38,8 @@
         <button type="submit" class="btn btn-primary w-100">Entrar</button>
         <div class="mt-3 text-center">
           <small>
-            Esqueceu a senha? <a href="/usuarios/password_reset/">Recuperar Senha.</a>
+            Esqueceu a senha? <a href="{% url 'usuarios:password_reset' %}
+">Recuperar Senha.</a>
           </small>
         </div>
       </form>
