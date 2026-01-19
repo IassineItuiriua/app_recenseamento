@@ -27,7 +27,7 @@ DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 # Render fornece o domínio do app, adiciona aqui
 ALLOWED_HOSTS = os.getenv(
     "ALLOWED_HOSTS",
-    "localhost,127.0.0.1,app-recenseamento.onrender.com"
+    "localhost,127.0.0.1"
 ).split(",")
 
 # ----------------------------
@@ -103,7 +103,7 @@ else:
     DATABASES = {
         "default": {
             "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
-            "NAME": os.getenv("DB_NAME", "meu_projecto"),
+            "NAME": os.getenv("DB_NAME", "postgres"),
             "USER": os.getenv("DB_USER", "iassine"),
             "PASSWORD": os.getenv("DB_PASSWORD", "iassine123"),
             "HOST": os.getenv("DB_HOST", "db"),

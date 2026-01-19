@@ -2,20 +2,60 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.forms import PasswordResetForm
+from django.contrib.auth import authenticate
+
 
 User = get_user_model()
 
 
-# 🔐 FORMULÁRIO DE LOGIN POR EMAIL
+from django import forms
+from django.contrib.auth import authenticate
+from django.contrib.auth.forms import AuthenticationForm
+
 class EmailAuthenticationForm(AuthenticationForm):
     username = forms.EmailField(
         label="Email",
-        widget=forms.EmailInput(attrs={"class": "form-control", "placeholder": "Email"})
+        widget=forms.EmailInput(attrs={
+            "class": "form-control",
+            "placeholder": "Email"
+        })
     )
+
     password = forms.CharField(
         label="Senha",
-        widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Senha"})
+        widget=forms.PasswordInput(attrs={
+            "class": "form-control",
+            "placeholder": "Senha"
+        })
     )
+
+    def clean(self):
+        # 1️⃣ Executa validações base do Django
+        cleaned_data = super().clean()
+
+        email = cleaned_data.get("username")
+        password = cleaned_data.get("password")
+
+        if email and password:
+            user = authenticate(
+                self.request,
+                username=email,   # 🔥 email tratado como username
+                password=password
+            )
+
+            if user is None:
+                raise forms.ValidationError(
+                    "Credenciais inválidas — tente novamente."
+                )
+
+            # 2️⃣ Obrigatório para o AuthenticationForm
+            self.confirm_login_allowed(user)
+
+            # 3️⃣ Cache interno do Django
+            self.user_cache = user
+
+        return cleaned_data
+
 
 
 # 🧾 REGISTO DE USUÁRIO
