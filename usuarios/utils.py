@@ -13,8 +13,3 @@ def calcular_idade(data_nascimento):
         (hoje.month, hoje.day) < (data_nascimento.month, data_nascimento.day)
     )
 
-from django.core import signing
-
-def gerar_token_reset(user):
-    signer = signing.TimestampSigner()
-    return signer.sign(user.pk)

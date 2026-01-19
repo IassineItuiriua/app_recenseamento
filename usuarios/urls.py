@@ -13,13 +13,4 @@ urlpatterns = [
     path("completar_perfil/", views.completar_perfil, name="completar_perfil"),
     path("painel/", views.painel, name="painel"),
 
-    # =========================
-    # RECUPERAÇÃO DE SENHA
-    # =========================
-
-    path("password-reset/", views.password_reset_request, name="password_reset"),
-    path("password-reset/<str:token>/", views.password_reset_confirm, name="password_reset_confirm"),
-    path("password-reset/done/", views.password_reset_done, name="password_reset_done"),
-
-
 ]
