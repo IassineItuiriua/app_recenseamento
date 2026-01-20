@@ -9,5 +9,5 @@ urlpatterns = [
     path("cadastro/", views.cadastro, name="cadastro"),
     path("completar_perfil/", views.completar_perfil, name="completar_perfil"),
     path("painel/", views.painel, name="painel"),
-    
+
 ]
