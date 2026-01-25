@@ -6,11 +6,9 @@
     <div class="col-md-12">
         <div class="card shadow p-4">
 
-            {% if recenseamento or perfil %}
-                <h3 class="mb-4">Bem-vindo, {{ user.first_name }}!</h3>   
-            {% else %}
-                <h3 class="mb-4">Bem-vindo!</h3>
-            {% endif %}
+    
+            <h3 class="mb-4">Bem-vindo, {{ user.first_name }}!</h3>   
+            
 
             <p><strong>NIM:</strong>
                 {% if recenseamento %}

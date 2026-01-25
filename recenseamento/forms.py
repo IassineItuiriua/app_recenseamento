@@ -82,6 +82,12 @@ class RecenseamentoForm(forms.ModelForm):
             "foto_capturada": forms.ClearableFileInput(attrs={"class": "form-control", "accept": ".jpg,.jpeg,.png"}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields["documento_identidade"].required = True
+        self.fields["foto_capturada"].required = True
+
     def clean_data_nascimento(self):
         data = self.cleaned_data.get("data_nascimento")
         if not data:
@@ -94,9 +100,25 @@ class RecenseamentoForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+
+        # 🔒 Validações obrigatórias SEM OCR
+        if not cleaned_data.get("documento_identidade"):
+            self.add_error(
+                "documento_identidade",
+                "Documento de identidade é obrigatório."
+            )
+
+        if not cleaned_data.get("foto_capturada"):
+            self.add_error(
+                "foto_capturada",
+                "A foto capturada é obrigatória."
+            )
+
+        # ⛔ Se OCR estiver desligado, para aqui
         if not settings.ENABLE_OCR:
             return cleaned_data
 
+        # ================= OCR =================
         nome_form = cleaned_data.get("nome_completo")
         bi_file = cleaned_data.get("documento_identidade")
         bi_path = None
@@ -106,8 +128,10 @@ class RecenseamentoForm(forms.ModelForm):
                 bi_path = salvar_temp_upload(bi_file) if hasattr(bi_file, "chunks") else bi_file
                 texto_bi = extrair_texto_do_bi(bi_path)
                 numero_bi = extrair_numero_bi(texto_bi)
+
                 if not numero_bi:
                     raise ValidationError("Não foi possível identificar o número do BI.")
+
                 cleaned_data["bi"] = numero_bi
 
                 if normalizar_texto(nome_form) not in normalizar_texto(texto_bi):
@@ -118,6 +142,7 @@ class RecenseamentoForm(forms.ModelForm):
                 os.remove(bi_path)
 
         return cleaned_data
+
 
     def save(self, commit=True):
         instance = super().save(commit=False)

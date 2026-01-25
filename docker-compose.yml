@@ -1,15 +1,15 @@
 services:
   web:
     build: .
-    command: >
-      sh -c "
-      until pg_isready -h db -p 5432 -U iassine; do
-        echo 'Aguardando PostgreSQL...';
-        sleep 2;
-      done &&
-      python manage.py migrate &&
-      python manage.py runserver 0.0.0.0:8000
-      "
+    command: python manage.py runserver 0.0.0.0:8000
+      # sh -c "
+      # until pg_isready -h db -p 5432 -U iassine; do
+      #   echo 'Aguardando PostgreSQL...';
+      #   sleep 2;
+      # done &&
+      # python manage.py migrate &&
+      # python manage.py runserver 0.0.0.0:8000
+      # "
     volumes:
       - .:/meu_projecto
     ports:
