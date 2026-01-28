@@ -10,11 +10,18 @@ import re
 import os
 from .utils.files import salvar_temp_upload
 from django.conf import settings
+import shutil
 
-# Configuração Tesseract OCR (Windows)
-if os.name == "nt":
-    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
+# Configuração multiplataforma do Tesseract
+if settings.ENABLE_OCR:
+    if os.name == "nt":
+        pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    else:
+        tesseract_path = shutil.which("tesseract")
+        if not tesseract_path:
+            raise RuntimeError("Tesseract não encontrado no sistema")
+        pytesseract.pytesseract.tesseract_cmd = tesseract_path
 # ======================
 # Funções utilitárias
 # ======================
