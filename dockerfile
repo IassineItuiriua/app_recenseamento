@@ -42,8 +42,13 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 # Expor porta do Render
 EXPOSE 8000
 
+CMD ["gunicorn", "meu_projecto.wsgi:application", \
+     "--bind", "0.0.0.0:8000", \
+     "--workers", "1", \
+     "--timeout", "120"]
+
 # Comando padrão para Gunicorn
-CMD ["gunicorn", "meu_projecto.wsgi:application", "--bind", "0.0.0.0:8000"] 
+# CMD ["gunicorn", "meu_projecto.wsgi:application", "--bind", "0.0.0.0:8000"] 
 # "--workers", "3"
 
 
