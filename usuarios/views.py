@@ -100,22 +100,34 @@ def completar_perfil(request):
         idade = (date.today() - data_nasc).days // 365
 
     if request.method == "POST":
-        form_usuario = CompletarPerfilUsuarioForm(request.POST, instance=usuario)
-        form_recenseamento = RecenseamentoForm(request.POST, request.FILES, instance=recenseamento)
-        form_cidadao = CompletarPerfilCidadaoForm(request.POST, request.FILES, instance=perfil)
+        with transaction.atomic():
+            form_usuario = CompletarPerfilUsuarioForm(request.POST, instance=usuario)
+            form_recenseamento = RecenseamentoForm(request.POST, request.FILES, instance=recenseamento)
+            form_cidadao = CompletarPerfilCidadaoForm(request.POST, request.FILES, instance=perfil)
 
-        def render_forms():
-            return render(request, "usuarios/completar_perfil.html", {
-                "form_usuario": form_usuario,
-                "form_recenseamento": form_recenseamento,
-                "form_cidadao": form_cidadao,
-                "idade": idade or 0,
-            })
+            def render_forms():
+                return render(request, "usuarios/completar_perfil.html", {
+                    "form_usuario": form_usuario,
+                    "form_recenseamento": form_recenseamento,
+                    "form_cidadao": form_cidadao,
+                    "idade": idade or 0,
+                })
 
-        # Atualiza dados básicos do usuário
-        if not form_usuario.is_valid():
-            return render_forms()
-        form_usuario.save()
+            # Atualiza dados básicos do usuário
+            # if not form_usuario.is_valid():
+            #     return render_forms()
+            # form_usuario.save()
+            if not form_usuario.is_valid():
+                return render_forms()
+
+            usuario_atualizado = form_usuario.save(commit=False)
+
+            for field in ["first_name", "last_name", "telefone"]:
+                valor = form_usuario.cleaned_data.get(field)
+                if valor not in [None, ""]:
+                    setattr(usuario_atualizado, field, valor)
+
+            usuario_atualizado.save()
 
         # Define idade se ainda não definida
         if idade is None:
