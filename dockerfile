@@ -30,7 +30,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar app
 COPY . .
-RUN python manage.py collectstatic --noinput
+# Entrypoint
+ENTRYPOINT ["./entrypoint.sh"]
+# RUN python manage.py collectstatic --noinput
 # Variáveis de produção
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1

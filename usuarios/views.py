@@ -17,15 +17,16 @@ import shutil
 # OCR Tesseract Windows
 import pytesseract
 # Configuração multiplataforma do Tesseract
-if settings.ENABLE_OCR:
-    if os.name == "nt":
-        pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-    else:
-        tesseract_path = shutil.which("tesseract")
-        if not tesseract_path:
-            raise RuntimeError("Tesseract não encontrado no sistema")
-        pytesseract.pytesseract.tesseract_cmd = tesseract_path
-
+# if settings.ENABLE_OCR:
+#     if os.name == "nt":
+#         pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+#     else:
+#         tesseract_path = shutil.which("tesseract")
+#         if not tesseract_path:
+#             raise RuntimeError("Tesseract não encontrado no sistema")
+#         pytesseract.pytesseract.tesseract_cmd = tesseract_path
+pytesseract.pytesseract.tesseract_cmd = shutil.which("tesseract")
+pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_CMD", "/usr/bin/tesseract")
 logger = logging.getLogger(__name__)
 
 # ======================================================
