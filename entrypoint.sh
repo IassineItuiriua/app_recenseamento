@@ -1,17 +1,14 @@
 #!/bin/sh
 set -e
 
-echo "▶️ Aguardando variáveis de ambiente..."
-echo "SECRET_KEY=${SECRET_KEY:+SET}"
+echo "▶️ Entrypoint iniciado"
+echo "▶️ SECRET_KEY está definida? ${SECRET_KEY:+SIM}"
 
-echo "▶️ Aplicando migrations..."
 python manage.py migrate --noinput
-
-echo "▶️ Coletando arquivos estáticos..."
 python manage.py collectstatic --noinput
 
-echo "▶️ Iniciando servidor..."
 exec "$@"
+
 
 
 

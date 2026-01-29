@@ -30,6 +30,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar app
 COPY . .
+RUN chmod +x /meu_projecto/entrypoint.sh
 # Entrypoint
 ENTRYPOINT ["./entrypoint.sh"]
 # RUN python manage.py collectstatic --noinput
@@ -42,7 +43,8 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 EXPOSE 8000
 
 # Comando padrão para Gunicorn
-CMD ["gunicorn", "meu_projecto.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+CMD ["gunicorn", "meu_projecto.wsgi:application", "--bind", "0.0.0.0:8000"] 
+# "--workers", "3"
 
 
 # FROM python:3.10-bullseye
