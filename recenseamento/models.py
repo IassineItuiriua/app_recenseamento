@@ -116,7 +116,7 @@ class PerfilCidadao(models.Model):
     dados_confirmados = models.BooleanField(default=False)
     data_nascimento = models.DateField(null=True, blank=True)
     nome_completo = models.CharField(max_length=255, blank=True, null=True)
-    numero_bi = models.CharField(max_length=13, unique=True, null=True, blank=True)
+    numero_bi = models.CharField(max_length=15, unique=True, null=True, blank=True)
     telefone = models.CharField(max_length=20)
     email = models.EmailField()
     acao_completada = models.BooleanField(default=False)
