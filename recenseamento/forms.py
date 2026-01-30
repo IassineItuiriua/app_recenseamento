@@ -100,65 +100,74 @@ def salvar_temp(file):
 # FORMULÁRIO RECENSEAMENTO
 # ==========================
 class RecenseamentoForm(forms.ModelForm):
-
     class Meta:
         model = Recenseamento
         exclude = ("usuario", "nim", "foi_submetido_exame", "resultado_exame")
 
     def clean_data_nascimento(self):
         data = self.cleaned_data.get("data_nascimento")
-        idade = date.today().year - data.year
+        if not data:
+            raise ValidationError("Data de nascimento é obrigatória.")
+        idade = date.today().year - data.year - ((date.today().month, date.today().day) < (data.month, data.day))
         if idade < 18 or idade > 35:
             raise ValidationError("Idade permitida: 18 a 35 anos.")
+        self.cleaned_data["idade"] = idade
         return data
 
     def clean(self):
         cleaned = super().clean()
 
-        with transaction.atomic():
+        bi = cleaned.get("documento_identidade")
+        foto = cleaned.get("foto_capturada")
+        nome_form = cleaned.get("nome_completo")
 
-            bi = cleaned.get("documento_identidade")
-            foto = cleaned.get("foto_capturada")
-            nome_form = cleaned.get("nome_completo")
+        if not bi or not foto:
+            raise ValidationError("Documento e foto são obrigatórios.")
 
-            if not bi or not foto:
-                raise ValidationError("Documento e foto são obrigatórios.")
+        bi_path = foto_path = None
+        nome_ok = False
+        face_ok = False
 
-            bi_path = foto_path = None
-            nome_ok = False
-            face_ok = False
+        try:
+            bi_path = salvar_temp(bi)
+            foto_path = salvar_temp(foto)
 
-            try:
-                bi_path = salvar_temp(bi)
-                foto_path = salvar_temp(foto)
+            # ===== OCR =====
+            if settings.ENABLE_OCR:
+                texto_bi = extrair_texto_bi(bi_path)
+                score_nome = similaridade_nomes(nome_form, texto_bi)
+                nome_ok = score_nome >= 0.60  # tolerância maior
+                numero_bi = extrair_numero_bi(texto_bi)
+                if numero_bi:
+                    cleaned["bi"] = numero_bi
 
-                # ===== OCR =====
-                if settings.ENABLE_OCR:
-                    texto_bi = extrair_texto_bi(bi_path)
-                    score_nome = similaridade_nomes(nome_form, texto_bi)
-                    nome_ok = score_nome >= 0.65   # 🔥 tolerante
+            # ===== FACE =====
+            if settings.ENABLE_FACE_RECOGNITION:
+                face_ok = verificar_face(bi_path, foto_path)
+            else:
+                face_ok = True
 
+            # ===== DECISÃO FINAL =====
+            if not nome_ok and not face_ok:
+                raise ValidationError(
+                    "O nome informado e a biometria facial não atingiram o nível mínimo de confiança. "
+                    "Verifique os dados e tente novamente com documentos e foto mais nítidos."
+                )
+            elif not nome_ok:
+                raise ValidationError(
+                    "O nome informado não bate exatamente com o documento. "
+                    "Confira se digitou corretamente ou tente enviar uma foto mais legível."
+                )
+            elif not face_ok:
+                raise ValidationError(
+                    "Falha na validação biométrica facial. Submeta uma foto mais nítida."
+                )
 
-                    numero_bi = extrair_numero_bi(texto_bi)
-                    if numero_bi:
-                        cleaned["bi"] = numero_bi
-
-                # ===== FACE =====
-                if settings.ENABLE_FACE_RECOGNITION:
-                    face_ok = verificar_face(bi_path, foto_path)
-
-                # ===== DECISÃO FINAL =====
-                if not nome_ok and not face_ok:
-                    raise ValidationError(
-                        "Documento inválido. O nome informado e a biometria facial "
-                        "não atingiram o nível mínimo de confiança."
-                    )
-
-            finally:
-                if bi_path and os.path.exists(bi_path):
-                    os.remove(bi_path)
-                if foto_path and os.path.exists(foto_path):
-                    os.remove(foto_path)
+        finally:
+            if bi_path and os.path.exists(bi_path):
+                os.remove(bi_path)
+            if foto_path and os.path.exists(foto_path):
+                os.remove(foto_path)
 
         return cleaned
 
@@ -166,7 +175,6 @@ class RecenseamentoForm(forms.ModelForm):
 # PERFIL CIDADÃO (>35)
 # ==========================
 class CompletarPerfilCidadaoForm(forms.ModelForm):
-
     class Meta:
         model = PerfilCidadao
         fields = (
@@ -176,63 +184,68 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
 
     def clean_data_nascimento(self):
         data = self.cleaned_data.get("data_nascimento")
-        idade = date.today().year - data.year
+        if not data:
+            raise ValidationError("Data de nascimento é obrigatória.")
+        idade = date.today().year - data.year - ((date.today().month, date.today().day) < (data.month, data.day))
         if idade < 18:
             raise ValidationError("Idade mínima: 18 anos.")
+        self.cleaned_data["idade"] = idade
         return data
 
     def clean(self):
         cleaned = super().clean()
 
-        with transaction.atomic():
+        bi = cleaned.get("bi")
+        foto = cleaned.get("foto")
+        nome_form = cleaned.get("nome_completo")
 
-            bi = cleaned.get("bi")
-            foto = cleaned.get("foto")
-            nome_form = cleaned.get("nome_completo")
+        if not bi or not foto:
+            raise ValidationError("Documento e foto são obrigatórios.")
 
-            if not bi or not foto:
-                raise ValidationError("Documento e foto são obrigatórios.")
+        bi_path = foto_path = None
+        nome_ok = False
+        face_ok = False
 
-            bi_path = foto_path = None
-            nome_ok = False
-            face_ok = False
+        try:
+            bi_path = salvar_temp(bi)
+            foto_path = salvar_temp(foto)
 
-            try:
-                bi_path = salvar_temp(bi)
-                foto_path = salvar_temp(foto)
+            # ===== OCR =====
+            if settings.ENABLE_OCR:
+                texto_bi = extrair_texto_bi(bi_path)
+                score_nome = similaridade_nomes(nome_form, texto_bi)
+                nome_ok = score_nome >= 0.60  # tolerância maior
+                numero_bi = extrair_numero_bi(texto_bi)
+                if numero_bi:
+                    cleaned["numero_bi"] = numero_bi
 
-                # ===== OCR =====
-                if settings.ENABLE_OCR:
-                    texto_bi = extrair_texto_bi(bi_path)
-                    score_nome = similaridade_nomes(nome_form, texto_bi)
-                    nome_ok = score_nome >= 0.65   # 🔥 tolerante
+            # ===== FACE =====
+            if settings.ENABLE_FACE_RECOGNITION:
+                face_ok = verificar_face(bi_path, foto_path)
+            else:
+                face_ok = True
 
-                    numero_bi = extrair_numero_bi(texto_bi)
-                    if numero_bi:
-                        cleaned["numero_bi"] = numero_bi
+            # ===== DECISÃO FINAL =====
+            if not nome_ok and not face_ok:
+                raise ValidationError(
+                    "O nome informado e a biometria facial não atingiram o nível mínimo de confiança. "
+                    "Verifique os dados e tente novamente com documentos e foto mais nítidos."
+                )
+            elif not nome_ok:
+                raise ValidationError(
+                    "O nome informado não bate exatamente com o documento. "
+                    "Confira se digitou corretamente ou tente enviar uma foto mais legível."
+                )
+            elif not face_ok:
+                raise ValidationError(
+                    "Falha na validação biométrica facial. Submeta uma foto mais nítida."
+                )
 
-                # ===== FACE =====
-                if settings.ENABLE_FACE_RECOGNITION:
-                    face_ok = verificar_face(bi_path, foto_path)
-                else:
-                    face_ok = True
-
-                # ===== DECISÃO FINAL =====
-                if not face_ok:
-                    raise ValidationError(
-                        "Falha na validação biométrica facial. Submeta uma foto mais nítida."
-                    )
-
-                if not nome_ok:
-                    raise ValidationError(
-                        "O nome informado não corresponde suficientemente ao documento."
-                    )
-
-            finally:
-                if bi_path and os.path.exists(bi_path):
-                    os.remove(bi_path)
-                if foto_path and os.path.exists(foto_path):
-                    os.remove(foto_path)
+        finally:
+            if bi_path and os.path.exists(bi_path):
+                os.remove(bi_path)
+            if foto_path and os.path.exists(foto_path):
+                os.remove(foto_path)
 
         return cleaned
 
