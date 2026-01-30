@@ -5,11 +5,7 @@ from datetime import date
 
 from .models import Recenseamento, PerfilCidadao
 from recenseamento.utils.bi import extrair_numero_bi
-from .utils import (
-    verificar_face,
-    extrair_texto_bi,
-    extrair_numero_bi,
-)
+
 from PIL import Image
 from pdf2image import convert_from_path
 import pytesseract
