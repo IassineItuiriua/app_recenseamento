@@ -10,7 +10,6 @@ import re
 import os
 import shutil
 from django.conf import settings
-from deepface import DeepFace
 import cv2
 import tempfile
 
@@ -65,15 +64,20 @@ def extrair_texto_bi(caminho):
 # ======================
 def verificar_face(bi_path, selfie_path):
     try:
+        from deepface import DeepFace
+
         resultado = DeepFace.verify(
             img1_path=bi_path,
             img2_path=selfie_path,
+            detector_backend="opencv",  # 🔥 SEM RetinaFace
             enforce_detection=True,
-            detector_backend="opencv",
+            model_name="VGG-Face"
         )
         return resultado.get("verified", False)
-    except Exception:
+
+    except Exception as e:
         return False
+
 
 
 def salvar_temp(file):
