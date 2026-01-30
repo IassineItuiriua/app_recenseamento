@@ -1,28 +1,13 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
-# -------------------------------
-# entrypoint.sh para Django + Gunicorn
-# -------------------------------
+echo ">>> Aplicando migrações"
+python manage.py migrate --noinput || true
 
-echo "Iniciando entrypoint do Django..."
+echo ">>> Coletando estáticos"
+python manage.py collectstatic --noinput || true
 
-# Aplicar migrações automaticamente
-echo "Aplicando migrações..."
-python manage.py migrate --noinput
-
-# Coletar arquivos estáticos
-echo "Coletando arquivos estáticos..."
-python manage.py collectstatic --noinput
-
-# Criar superuser se necessário (opcional)
-# Ajuste email/senha caso queira criar automaticamente
-# python manage.py createsuperuser --noinput --email admin@example.com
-
-# Iniciar Gunicorn
-echo "Iniciando Gunicorn..."
-exec gunicorn meu_projecto.wsgi:application --bind 0.0.0.0:8000 --workers 1 --timeout 120
-
+exec "$@"
 
 
 
