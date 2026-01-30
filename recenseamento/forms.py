@@ -12,6 +12,8 @@ import shutil
 from django.conf import settings
 import cv2
 import tempfile
+from difflib import SequenceMatcher
+
 
 
 # ======================
@@ -20,6 +22,14 @@ import tempfile
 pytesseract.pytesseract.tesseract_cmd = os.getenv(
     "TESSERACT_CMD", "/usr/bin/tesseract"
 )
+
+
+def similaridade_nomes(nome1, nome2):
+    return SequenceMatcher(
+        None,
+        normalizar_texto(nome1),
+        normalizar_texto(nome2)
+    ).ratio()
 
 # ======================
 # UTILITÁRIOS TEXTO
@@ -69,14 +79,24 @@ def verificar_face(bi_path, selfie_path):
         resultado = DeepFace.verify(
             img1_path=bi_path,
             img2_path=selfie_path,
-            detector_backend="opencv",  # 🔥 SEM RetinaFace
-            enforce_detection=True,
-            model_name="VGG-Face"
+            model_name="ArcFace",
+            detector_backend="retinaface",
+            enforce_detection=False
         )
-        return resultado.get("verified", False)
+
+        return {
+            "match": resultado.get("distance", 1) <= 0.75,
+            "distance": resultado.get("distance", 1)
+        }
 
     except Exception as e:
-        return False
+        print(f"[ERRO FACE] {e}")
+        return {
+            "match": False,
+            "distance": 1
+        }
+
+
 
 
 
@@ -185,17 +205,31 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
 
             if settings.ENABLE_OCR:
                 texto_bi = extrair_texto_bi(bi_path)
-                nome_ok = normalizar_texto(nome_form) in normalizar_texto(texto_bi)
-                numero = extrair_numero_bi(texto_bi)
-                if numero:
-                    cleaned["numero_bi"] = numero
+                score_nome = similaridade_nomes(nome_form, texto_bi)
+                nome_ok = score_nome >= 0.70
 
-            if settings.ENABLE_FACE_RECOGNITION:
-                face_ok = verificar_face(bi_path, foto_path)
+                numero_bi = extrair_numero_bi(texto_bi)
+                if numero_bi:
+                    cleaned["bi"] = numero_bi
 
-            if not nome_ok and not face_ok:
+            # ===== FACE =====
+                if settings.ENABLE_FACE_RECOGNITION:
+                    face_result = verificar_face(bi_path, foto_path)
+                    face_ok = face_result["match"]
+                    face_distance = face_result["distance"]
+                else:
+                    face_ok = True
+                    face_distance = None
+
+            # ===== DECISÃO FINAL (institucional) =====
+            if not face_ok:
                 raise ValidationError(
-                    "Documento inválido: nome ou rosto não correspondem."
+                    "Falha na validação biométrica facial. Submeta uma foto mais nítida."
+                )
+
+            if not nome_ok:
+                raise ValidationError(
+                    "O nome informado não corresponde suficientemente ao documento."
                 )
 
         finally:
