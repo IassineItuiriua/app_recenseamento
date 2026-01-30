@@ -5,7 +5,11 @@ from datetime import date
 
 from .models import Recenseamento, PerfilCidadao
 from recenseamento.utils.bi import extrair_numero_bi
-
+from .utils import (
+    verificar_face,
+    extrair_texto_bi,
+    extrair_numero_bi,
+)
 from PIL import Image
 from pdf2image import convert_from_path
 import pytesseract
@@ -47,10 +51,12 @@ def extrair_nome_do_bi(texto):
         linha_norm = normalizar_texto(linha)
         palavras = linha_norm.split()
 
-        if len(palavras) >= 3 and all(p.isalpha() for p in palavras):
+        # 🔥 aceita OCR imperfeito, mas exige estrutura de nome
+        if len(palavras) >= 3 and len(linha_norm) >= 15:
             candidatos.append(linha_norm)
 
     return max(candidatos, key=len, default="")
+
 
 
 def similaridade_nomes(nome1, nome2):
@@ -136,47 +142,57 @@ class RecenseamentoForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
 
-        bi = cleaned.get("documento_identidade")
+        documento = cleaned.get("documento_identidade")
         foto = cleaned.get("foto_capturada")
-        nome_form = cleaned.get("nome_completo")
 
-        if not bi or not foto:
-            raise ValidationError("Documento e foto são obrigatórios.")
+        if not documento:
+            raise ValidationError("O documento de identidade é obrigatório.")
 
-        bi_path = foto_path = None
-        nome_ok = False
-        face_ok = False
+        if not foto:
+            raise ValidationError("A foto capturada é obrigatória.")
+
+        doc_path = None
+        foto_path = None
 
         try:
-            bi_path = salvar_temp(bi)
-            foto_path = salvar_temp(foto)
+            # ===== CloudinaryField → ficheiros temporários =====
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as f:
+                for chunk in documento.file.chunks():
+                    f.write(chunk)
+                doc_path = f.name
 
-            if settings.ENABLE_OCR:
-                texto_bi = extrair_texto_bi(bi_path)
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as f:
+                for chunk in foto.file.chunks():
+                    f.write(chunk)
+                foto_path = f.name
 
-                nome_ok, score, nome_bi = validar_nome_com_bi(nome_form, texto_bi)
+            # ===== VALIDAÇÃO FACIAL (CRITÉRIO PRINCIPAL) =====
+            if getattr(settings, "ENABLE_FACE_RECOGNITION", False):
+                face_ok = verificar_face(doc_path, foto_path)
+                if not face_ok:
+                    raise ValidationError(
+                        "Falha na validação biométrica facial. "
+                        "Certifique-se de que a foto corresponde ao documento apresentado."
+                    )
 
+            # ===== OCR (APENAS PARA EXTRAIR Nº BI) =====
+            if getattr(settings, "ENABLE_OCR", False):
+                texto_bi = extrair_texto_bi(doc_path)
                 numero_bi = extrair_numero_bi(texto_bi)
+
                 if numero_bi:
                     cleaned["bi"] = numero_bi
 
-            if settings.ENABLE_FACE_RECOGNITION:
-                face_ok = verificar_face(bi_path, foto_path)
-
-            if not nome_ok and not face_ok:
-                raise ValidationError(
-                    "Documento inválido. O nome informado e a biometria facial "
-                    "não atingiram o nível mínimo de confiança."
-                )
+            # ❌ NOME NÃO É VALIDADO POR OCR
+            # OCR em nomes moçambicanos gera falsos negativos
 
         finally:
-            if bi_path and os.path.exists(bi_path):
-                os.remove(bi_path)
+            if doc_path and os.path.exists(doc_path):
+                os.remove(doc_path)
             if foto_path and os.path.exists(foto_path):
                 os.remove(foto_path)
 
         return cleaned
-
 
 # ==========================
 # PERFIL CIDADÃO (>35)
@@ -208,22 +224,12 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
             raise ValidationError("Documento e foto são obrigatórios.")
 
         bi_path = foto_path = None
-        nome_ok = False
-        face_ok = False
 
         try:
             bi_path = salvar_temp(bi)
             foto_path = salvar_temp(foto)
 
-            if settings.ENABLE_OCR:
-                texto_bi = extrair_texto_bi(bi_path)
-
-                nome_ok, score, nome_bi = validar_nome_com_bi(nome_form, texto_bi)
-
-                numero_bi = extrair_numero_bi(texto_bi)
-                if numero_bi:
-                    cleaned["numero_bi"] = numero_bi
-
+            # ===== FACE (DECISIVO) =====
             if settings.ENABLE_FACE_RECOGNITION:
                 face_ok = verificar_face(bi_path, foto_path)
             else:
@@ -234,10 +240,15 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
                     "Falha na validação biométrica facial. Submeta uma foto mais nítida."
                 )
 
-            if not nome_ok:
-                raise ValidationError(
-                    "O nome informado não corresponde suficientemente ao documento."
-                )
+            # ===== OCR (APENAS AUXILIAR) =====
+            if settings.ENABLE_OCR:
+                texto_bi = extrair_texto_bi(bi_path)
+
+                numero_bi = extrair_numero_bi(texto_bi)
+                if numero_bi:
+                    cleaned["numero_bi"] = numero_bi
+
+            # 🚨 NOME NUNCA BLOQUEIA MAIS 🚨
 
         finally:
             if bi_path and os.path.exists(bi_path):
