@@ -27,7 +27,7 @@ DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 # Render fornece o domínio do app, adiciona aqui
 ALLOWED_HOSTS = os.getenv(
     "ALLOWED_HOSTS",
-    "localhost,127.0.0.1"
+    ".onrender.com,localhost,127.0.0.1"
 ).split(",")
 
 # ----------------------------
@@ -148,7 +148,9 @@ else:
 # Arquivos de mídia
 # ----------------------------
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"  # ou usar S3 se quiser deploy cloud storage
+# MEDIA_ROOT = BASE_DIR / "media"  # ou usar S3 se quiser deploy cloud storage
+if DEBUG:
+    MEDIA_ROOT = BASE_DIR / "media"
 
 # ----------------------------
 # Autenticação
@@ -184,7 +186,10 @@ EMAIL_TIMEOUT = 30
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
-FACE_RECOGNITION_ENABLED = os.getenv("FACE_RECOGNITION_ENABLED", "False").lower() == "true"
+# FACE_RECOGNITION_ENABLED = os.getenv("FACE_RECOGNITION_ENABLED", "False").lower() == "true"
+ENABLE_FACE_RECOGNITION = os.getenv(
+    "ENABLE_FACE_RECOGNITION", "False"
+).lower() == "true"
 
 
 # Limite de upload
@@ -194,10 +199,23 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760
 # ----------------------------
 # Logging
 # ----------------------------
+# LOGGING = {
+#     "version": 1,
+#     "handlers": {"console": {"class": "logging.StreamHandler"}},
+#     "root": {"handlers": ["console"], "level": "ERROR"},
+# }
 LOGGING = {
     "version": 1,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
-    "root": {"handlers": ["console"], "level": "ERROR"},
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
 }
 
 
@@ -214,7 +232,9 @@ cloudinary.config(
     secure=True
 )
 
-ENABLE_OCR = os.getenv("ENABLE_OCR", "false") == "true"
+# ENABLE_OCR = os.getenv("ENABLE_OCR", "false") == "true"
+ENABLE_OCR = os.getenv("ENABLE_OCR", "False").lower() == "true"
+
 
 
 AUTHENTICATION_BACKENDS = [
@@ -222,8 +242,12 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
 
+# CSRF_TRUSTED_ORIGINS = [
+#     "https://app-recenseamento.onrender.com",
+# ]
 CSRF_TRUSTED_ORIGINS = [
-    "https://app-recenseamento.onrender.com",
+    "https://*.onrender.com",
 ]
+
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
