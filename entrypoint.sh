@@ -1,13 +1,25 @@
 #!/bin/sh
 set -e
 
-echo "▶️ Entrypoint iniciado"
-echo "▶️ SECRET_KEY está definida? ${SECRET_KEY:+SIM}"
+echo ">>> Aplicando migrações"
+python manage.py migrate --noinput || true
 
-python manage.py migrate --noinput
-python manage.py collectstatic --noinput
+echo ">>> Coletando estáticos"
+python manage.py collectstatic --noinput || true
 
 exec "$@"
+
+
+# #!/bin/sh
+# set -e
+
+# echo "▶️ Entrypoint iniciado"
+# echo "▶️ SECRET_KEY está definida? ${SECRET_KEY:+SIM}"
+
+# python manage.py migrate --noinput
+# python manage.py collectstatic --noinput
+
+# exec "$@"
 
 
 
