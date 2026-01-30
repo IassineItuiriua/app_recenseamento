@@ -80,7 +80,7 @@ def verificar_face(bi_path, selfie_path):
         )
 
         distance = resultado.get("distance", 1)
-        return distance <= 0.80
+        return distance <= 0.85
 
     except Exception as e:
         print(f"[ERRO FACE] {e}")
@@ -136,7 +136,7 @@ class RecenseamentoForm(forms.ModelForm):
                 if settings.ENABLE_OCR:
                     texto_bi = extrair_texto_bi(bi_path)
                     score_nome = similaridade_nomes(nome_form, texto_bi)
-                    nome_ok = score_nome >= 0.65   # 🔥 tolerante
+                    nome_ok = score_nome >= 0.55   # 🔥 tolerante
 
 
                     numero_bi = extrair_numero_bi(texto_bi)
@@ -205,7 +205,7 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
                 if settings.ENABLE_OCR:
                     texto_bi = extrair_texto_bi(bi_path)
                     score_nome = similaridade_nomes(nome_form, texto_bi)
-                    nome_ok = score_nome >= 0.65   # 🔥 tolerante
+                    nome_ok = score_nome >= 0.55   # 🔥 tolerante
 
                     numero_bi = extrair_numero_bi(texto_bi)
                     if numero_bi:
