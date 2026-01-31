@@ -186,10 +186,17 @@ EMAIL_TIMEOUT = 30
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
-FACE_RECOGNITION_ENABLED = False#os.getenv("FACE_RECOGNITION_ENABLED", "False").lower() == "true"
-ENABLE_FACE_RECOGNITION = os.getenv(
-    "ENABLE_FACE_RECOGNITION", "False"
-).lower() == "true"
+def env_bool(name, default=False):
+    return os.getenv(name, str(default)).lower() in ("1", "true", "yes", "on")
+
+ENABLE_FACE_RECOGNITION = env_bool("ENABLE_FACE_RECOGNITION", True)
+FACE_RECOGNITION_ENABLED = env_bool("FACE_RECOGNITION_ENABLED", True)
+ENABLE_OCR = env_bool("ENABLE_OCR", True)
+
+# FACE_RECOGNITION_ENABLED = False#os.getenv("FACE_RECOGNITION_ENABLED", "False").lower() == "true"
+# ENABLE_FACE_RECOGNITION = os.getenv(
+#     "ENABLE_FACE_RECOGNITION", "False"
+# ).lower() == "true"
 
 
 # Limite de upload
@@ -232,7 +239,7 @@ cloudinary.config(
     secure=True
 )
 
-ENABLE_OCR = False#os.getenv("ENABLE_OCR", "false") == "true"
+# ENABLE_OCR = False#os.getenv("ENABLE_OCR", "false") == "true"
 # ENABLE_OCR = os.getenv("ENABLE_OCR", "False").lower() == "true"
 
 
