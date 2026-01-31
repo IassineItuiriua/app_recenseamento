@@ -137,12 +137,20 @@ def similaridade_nomes(nome1, nome2):
     ).ratio()
 
 
-def validar_nome_bi(nome_form: str, nome_bi: str, threshold=0.6):
+def validar_nome_bi(nome_form, nome_bi, threshold=0.6):
+    if not nome_bi or len(nome_bi.strip()) < 5:
+        raise ValidationError(
+            "Não foi possível validar o nome no documento. "
+            "Certifique-se de que a imagem do BI está legível."
+        )
+
     score = score_nome_final(nome_form, nome_bi)
+
     if score < threshold:
         raise ValidationError(
             "O nome informado não corresponde ao documento."
         )
+
 
 
 # ======================
