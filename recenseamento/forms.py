@@ -114,18 +114,15 @@ def normalizar_texto(texto):
 
 
 def extrair_nome_do_bi(texto):
-    linhas = texto.splitlines()
-    candidatos = []
+    linhas = texto.upper().splitlines()
 
     for linha in linhas:
-        linha_norm = normalizar_texto(linha)
-        palavras = linha_norm.split()
+        if "NOME" in linha:
+            return linha.replace("NOME", "").strip()
 
-        # 🔥 aceita OCR imperfeito, mas exige estrutura de nome
-        if len(palavras) >= 3 and len(linha_norm) >= 15:
-            candidatos.append(linha_norm)
-
-    return max(candidatos, key=len, default="")
+    # fallback: maior linha com letras
+    candidatas = [l for l in linhas if len(l) > 15 and l.isupper()]
+    return max(candidatas, key=len, default="")
 
 
 
