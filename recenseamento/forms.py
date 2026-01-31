@@ -24,10 +24,83 @@ pytesseract.pytesseract.tesseract_cmd = os.getenv(
     "TESSERACT_CMD", "/usr/bin/tesseract"
 )
 
+def validar_documento_completo(
+    nome_form,
+    bi_file,
+    selfie_file=None,
+    threshold_nome=0.6
+):
+    bi_path = selfie_path = None
+
+    try:
+        # ===== salvar BI =====
+        bi_path = salvar_temp(bi_file)
+
+        # ===== OCR =====
+        nome_bi = None
+        if settings.ENABLE_OCR:
+            texto_bi = extrair_texto_bi(bi_path)
+            nome_bi = extrair_nome_do_bi(texto_bi)
+
+            validar_nome_bi(nome_form, nome_bi, threshold_nome)
+
+        # ===== FACE =====
+        if settings.ENABLE_FACE_RECOGNITION and selfie_file:
+            selfie_path = salvar_temp(selfie_file)
+            face_ok = verificar_face(bi_path, selfie_path)
+
+            if not face_ok:
+                raise ValidationError(
+                    "A selfie não corresponde ao documento de identidade."
+                )
+
+    finally:
+        if bi_path and os.path.exists(bi_path):
+            os.remove(bi_path)
+        if selfie_path and os.path.exists(selfie_path):
+            os.remove(selfie_path)
 
 # ======================
 # UTILITÁRIOS DE TEXTO
 # ======================
+
+STOPWORDS = {"DE", "DA", "DO", "DOS", "DAS", "E"}
+
+def normalizar_nome(nome: str) -> str:
+    if not nome:
+        return ""
+
+    nome = unicodedata.normalize("NFD", nome)
+    nome = nome.encode("ascii", "ignore").decode("utf-8")
+    nome = nome.upper()
+    nome = re.sub(r"[^A-Z ]", "", nome)
+    nome = re.sub(r"\s+", " ", nome).strip()
+
+    partes = [p for p in nome.split() if p not in STOPWORDS]
+    return " ".join(partes)
+
+def similaridade_sequence(nome1: str, nome2: str) -> float:
+    return SequenceMatcher(
+        None,
+        normalizar_nome(nome1),
+        normalizar_nome(nome2)
+    ).ratio()
+
+def similaridade_por_palavras(nome1: str, nome2: str) -> float:
+    set1 = set(normalizar_nome(nome1).split())
+    set2 = set(normalizar_nome(nome2).split())
+
+    if not set1 or not set2:
+        return 0.0
+
+    return len(set1 & set2) / max(len(set1), len(set2))
+
+def score_nome_final(nome_form: str, nome_bi: str) -> float:
+    return max(
+        similaridade_sequence(nome_form, nome_bi),
+        similaridade_por_palavras(nome_form, nome_bi),
+    )
+
 def normalizar_texto(texto):
     if not texto:
         return ""
@@ -37,6 +110,7 @@ def normalizar_texto(texto):
     texto = re.sub(r"[^A-Z\s]", " ", texto)
     texto = re.sub(r"\s+", " ", texto).strip()
     return texto
+
 
 
 def extrair_nome_do_bi(texto):
@@ -63,14 +137,12 @@ def similaridade_nomes(nome1, nome2):
     ).ratio()
 
 
-def validar_nome_com_bi(nome_form, texto_bi, threshold=0.65):
-    nome_bi = extrair_nome_do_bi(texto_bi)
-
-    if not nome_bi:
-        return False, 0.0, None
-
-    score = similaridade_nomes(nome_form, nome_bi)
-    return score >= threshold, score, nome_bi
+def validar_nome_bi(nome_form: str, nome_bi: str, threshold=0.6):
+    score = score_nome_final(nome_form, nome_bi)
+    if score < threshold:
+        raise ValidationError(
+            "O nome informado não corresponde ao documento."
+        )
 
 
 # ======================
@@ -138,52 +210,22 @@ class RecenseamentoForm(forms.ModelForm):
         cleaned = super().clean()
 
         nome_form = cleaned.get("nome_completo")
-        documento = cleaned.get("documento_identidade")
-        foto = cleaned.get("foto_capturada")
+        bi = cleaned.get("documento_identidade")
+        selfie = cleaned.get("foto_capturada")
 
-        if not documento or not foto or not nome_form:
-            raise ValidationError("Nome, documento e foto são obrigatórios.")
+        if not bi or not selfie:
+            raise ValidationError("Documento e foto são obrigatórios.")
 
-        doc_path = foto_path = None
-
-        try:
-            # Salva arquivos temporários
-            doc_path = salvar_temp(documento)
-            foto_path = salvar_temp(foto)
-
-            # ================= OCR =================
-            if getattr(settings, "ENABLE_OCR", False):
-                texto_bi = extrair_texto_bi(doc_path)
-                numero_bi = extrair_numero_bi(texto_bi)
-                nome_bi = extrair_nome_do_bi(texto_bi)
-
-                if numero_bi:
-                    cleaned["bi"] = numero_bi
-
-                if not nome_bi:
-                    raise ValidationError("Não foi possível extrair o nome do documento.")
-
-                # Verifica similaridade do nome
-                from difflib import SequenceMatcher
-                score_nome = SequenceMatcher(None, normalizar_texto(nome_form), normalizar_texto(nome_bi)).ratio()
-                if score_nome < 0.65:  # tolerância mínima 65%
-                    raise ValidationError(
-                        f"O nome informado não corresponde ao documento (similaridade: {score_nome:.2f})."
-                    )
-
-            # ================= FACE RECOGNITION =================
-            if getattr(settings, "ENABLE_FACE_RECOGNITION", False):
-                face_ok = verificar_face(doc_path, foto_path)
-                if not face_ok:
-                    raise ValidationError("A selfie não corresponde à foto do documento.")
-
-        finally:
-            if doc_path and os.path.exists(doc_path):
-                os.remove(doc_path)
-            if foto_path and os.path.exists(foto_path):
-                os.remove(foto_path)
+        validar_documento_completo(
+            nome_form=nome_form,
+            bi_file=bi,
+            selfie_file=selfie,
+            threshold_nome=0.6
+        )
 
         return cleaned
+
+
 
 class CompletarPerfilCidadaoForm(forms.ModelForm):
     class Meta:
@@ -204,49 +246,18 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
         cleaned = super().clean()
 
         nome_form = cleaned.get("nome_completo")
-        bi_file = cleaned.get("bi")  # arquivo do BI
-        foto = cleaned.get("foto")   # selfie
+        bi = cleaned.get("bi")
+        foto = cleaned.get("foto")
 
-        if not nome_form or not bi_file or not foto:
-            raise ValidationError("Nome, documento e foto são obrigatórios.")
+        if not bi or not foto:
+            raise ValidationError("Documento e foto são obrigatórios.")
 
-        bi_path = foto_path = None
-
-        try:
-            # Salva arquivos temporários
-            bi_path = salvar_temp(bi_file)
-            foto_path = salvar_temp(foto)
-
-            # ================= OCR =================
-            if getattr(settings, "ENABLE_OCR", False):
-                texto_bi = extrair_texto_bi(bi_path)
-                numero_bi = extrair_numero_bi(texto_bi)
-                nome_bi = extrair_nome_do_bi(texto_bi)
-
-                if numero_bi:
-                    cleaned["numero_bi"] = numero_bi
-
-                if not nome_bi:
-                    raise ValidationError("Não foi possível extrair o nome do documento.")
-
-                # Verifica similaridade do nome
-                score_nome = SequenceMatcher(None, normalizar_texto(nome_form), normalizar_texto(nome_bi)).ratio()
-                if score_nome < 0.65:
-                    raise ValidationError(
-                        f"O nome informado não corresponde ao documento (similaridade: {score_nome:.2f})."
-                    )
-
-            # ================= FACE RECOGNITION =================
-            if getattr(settings, "ENABLE_FACE_RECOGNITION", False):
-                face_ok = verificar_face(bi_path, foto_path)
-                if not face_ok:
-                    raise ValidationError("A selfie não corresponde à foto do documento.")
-
-        finally:
-            if bi_path and os.path.exists(bi_path):
-                os.remove(bi_path)
-            if foto_path and os.path.exists(foto_path):
-                os.remove(foto_path)
+        validar_documento_completo(
+            nome_form=nome_form,
+            bi_file=bi,
+            selfie_file=foto,
+            threshold_nome=0.6
+        )
 
         return cleaned
 

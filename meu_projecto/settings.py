@@ -189,7 +189,7 @@ DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 def env_bool(name, default=False):
     return os.getenv(name, str(default)).lower() in ("1", "true", "yes", "on")
 
-ENABLE_FACE_RECOGNITION = env_bool("ENABLE_FACE_RECOGNITION", True)
+# ENABLE_FACE_RECOGNITION = env_bool("ENABLE_FACE_RECOGNITION", True)
 FACE_RECOGNITION_ENABLED = env_bool("FACE_RECOGNITION_ENABLED", True)
 ENABLE_OCR = env_bool("ENABLE_OCR", True)
 
