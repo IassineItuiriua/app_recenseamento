@@ -266,24 +266,24 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
         return data
 
     def clean(self):
-        cleaned = super().clean()
+    cleaned = super().clean()
 
-        nome_form = cleaned.get("nome_completo")
-        bi = cleaned.get("bi")
-        foto = cleaned.get("foto")
+    nome_form = cleaned.get("nome_completo")
+    bi = cleaned.get("bi")
+    selfie = cleaned.get("foto")  # ✅ DEFINIDO AQUI
 
-        if not bi or not foto:
-            raise ValidationError("Documento e foto são obrigatórios.")
+    if not bi or not selfie:
+        raise ValidationError("Documento e foto são obrigatórios.")
 
-        validar_documento_completo(
-            nome_form=nome_form,
-            bi_file=bi,
-            selfie_file=selfie,
-            threshold_nome=0.55   # 👈 baixa um pouco
-        )
+    validar_documento_completo(
+        nome_form=nome_form,
+        bi_file=bi,
+        selfie_file=selfie,
+        threshold_nome=0.55
+    )
 
+    return cleaned
 
-        return cleaned
 
 # class RecenseamentoForm(forms.ModelForm):
 
