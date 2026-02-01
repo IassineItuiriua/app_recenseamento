@@ -114,14 +114,23 @@ def normalizar_texto(texto):
 
 
 def extrair_nome_do_bi(texto):
-    linhas = texto.upper().splitlines()
+    if not texto:
+        return ""
 
+    linhas = [l.strip() for l in texto.upper().splitlines() if len(l.strip()) > 5]
+
+    # 1️⃣ tentar linha com "NOME"
     for linha in linhas:
         if "NOME" in linha:
             return linha.replace("NOME", "").strip()
 
-    # fallback: maior linha com letras
-    candidatas = [l for l in linhas if len(l) > 15 and l.isupper()]
+    # 2️⃣ fallback: linha com mais letras (provável nome completo)
+    candidatas = [
+        l for l in linhas
+        if sum(c.isalpha() for c in l) > 10
+        and not any(p in l for p in ["REPUBLICA", "MINISTERIO", "DATA", "EMISSAO"])
+    ]
+
     return max(candidatas, key=len, default="")
 
 
@@ -135,10 +144,18 @@ def similaridade_nomes(nome1, nome2):
 
 
 def validar_nome_bi(nome_form, nome_bi, threshold=0.6):
-    if not nome_bi or len(nome_bi.strip()) < 5:
+    if not nome_bi:
+        raise ValidationError(
+            "Não foi possível ler o nome no documento. "
+            "Envie uma imagem do BI mais nítida."
+        )
+
+    nome_bi = nome_bi.strip()
+
+    if len(nome_bi) < 8:
         raise ValidationError(
             "Não foi possível validar o nome no documento. "
-            "Certifique-se de que a imagem do BI está legível."
+            "Certifique-se de que o BI está legível."
         )
 
     score = score_nome_final(nome_form, nome_bi)
@@ -147,6 +164,7 @@ def validar_nome_bi(nome_form, nome_bi, threshold=0.6):
         raise ValidationError(
             "O nome informado não corresponde ao documento."
         )
+
 
 
 
@@ -225,8 +243,9 @@ class RecenseamentoForm(forms.ModelForm):
             nome_form=nome_form,
             bi_file=bi,
             selfie_file=selfie,
-            threshold_nome=0.6
+            threshold_nome=0.55   # 👈 baixa um pouco
         )
+
 
         return cleaned
 
@@ -260,9 +279,10 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
         validar_documento_completo(
             nome_form=nome_form,
             bi_file=bi,
-            selfie_file=foto,
-            threshold_nome=0.6
+            selfie_file=selfie,
+            threshold_nome=0.55   # 👈 baixa um pouco
         )
+
 
         return cleaned
 
