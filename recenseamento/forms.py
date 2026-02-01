@@ -146,7 +146,8 @@ def similaridade_nomes(nome1, nome2):
 def validar_nome_bi(nome_form, nome_bi, threshold=0.6):
     if not nome_bi:
         raise ValidationError(
-            f"DEBUG OCR → Nome no BI: '{nome_bi}'"
+            "Não foi possível ler o nome no documento. "
+            "Envie uma imagem do BI mais nítida."
         )
 
     nome_bi = nome_bi.strip()
