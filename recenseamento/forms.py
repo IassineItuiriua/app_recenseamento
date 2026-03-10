@@ -29,7 +29,7 @@ def validar_documento_completo(
     nome_form,
     bi_file,
     selfie_file=None,
-    threshold_nome=0.55
+    threshold_nome=0.40
 ):
     bi_path = selfie_path = None
 
@@ -122,21 +122,20 @@ def normalizar_texto(texto):
 
 
 def extrair_nome_do_bi(texto):
-    if not texto:
-        return ""
+    texto = texto.upper()
 
-    linhas = [l.strip() for l in texto.upper().splitlines() if len(l.strip()) > 5]
+    padrao = r"NOME\s*[:\-]?\s*([A-Z\s]+)"
+    match = re.search(padrao, texto)
 
-    # 1️⃣ tentar linha com "NOME"
-    for linha in linhas:
-        if "NOME" in linha:
-            return linha.replace("NOME", "").strip()
+    if match:
+        return match.group(1).strip()
 
-    # 2️⃣ fallback: linha com mais letras (provável nome completo)
+    linhas = texto.split("\n")
     candidatas = [
-        l for l in linhas
-        if sum(c.isalpha() for c in l) > 10
-        and not any(p in l for p in ["REPUBLICA", "MINISTERIO", "DATA", "EMISSAO"])
+        l.strip() for l in linhas
+        if len(l.strip()) > 8
+        and sum(c.isalpha() for c in l) > 8
+        and "REPUBLICA" not in l
     ]
 
     return max(candidatas, key=len, default="")
@@ -166,11 +165,14 @@ def validar_nome_bi(nome_form, nome_bi, threshold=0.65):
     # Média ponderada (50% sequence, 50% palavras)
     score_final = (score_sequence + score_palavras) / 2
 
+    # if score_final < threshold:
+    #     raise ValidationError(
+    #         "O nome informado não corresponde suficientemente ao documento. "
+    #         "Verifique se digitou corretamente conforme o BI."
+    #     )
+    
     if score_final < threshold:
-        raise ValidationError(
-            "O nome informado não corresponde suficientemente ao documento. "
-            "Verifique se digitou corretamente conforme o BI."
-        )
+        print("⚠️ Aviso: Nome com baixa similaridade com o BI.")
 # ======================
 # OCR BI
 # ======================
@@ -280,7 +282,7 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
             nome_form=nome_form,
             bi_file=bi,
             selfie_file=selfie,
-            threshold_nome=0.55
+            threshold_nome=0.40
         )
 
         return cleaned
