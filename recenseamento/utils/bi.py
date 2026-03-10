@@ -1,66 +1,102 @@
 import unicodedata
-import re
+from difflib import SequenceMatcher
+from django.core.exceptions import ValidationError
 
 
-def normalizar_texto(texto):
-    """
-    Remove acentos e caracteres especiais
-    """
+def normalizar_nome(nome):
 
-    if not texto:
-        return ""
+    nome = nome.upper().strip()
 
-    texto = unicodedata.normalize("NFKD", texto)
-    texto = texto.encode("ASCII", "ignore").decode("ASCII")
+    nome = unicodedata.normalize("NFD", nome)
 
-    texto = texto.upper()
+    nome = "".join(c for c in nome if unicodedata.category(c) != "Mn")
 
-    texto = re.sub(r"[^A-Z0-9\s]", " ", texto)
-
-    texto = re.sub(r"\s+", " ", texto)
-
-    return texto.strip()
+    return nome
 
 
-def normalizar_texto_ocr(texto):
-    """
-    Corrige erros comuns do OCR
-    """
+def nomes_semelhantes(nome1, nome2):
 
-    if not texto:
-        return ""
+    nome1 = normalizar_nome(nome1)
 
-    texto = texto.upper()
+    nome2 = normalizar_nome(nome2)
 
-    texto = texto.replace("O", "0")
-    texto = texto.replace("I", "1")
-    texto = texto.replace("L", "1")
-
-    texto = re.sub(r"[^A-Z0-9]", "", texto)
-
-    return texto
+    return SequenceMatcher(None, nome1, nome2).ratio()
 
 
-def extrair_numero_bi(texto):
-    """
-    Extrai número do BI a partir do texto OCR
-    """
+def validar_documento_completo(nome_digitado, nome_documento, threshold=0.6):
 
-    texto = normalizar_texto_ocr(texto)
+    score = nomes_semelhantes(nome_digitado, nome_documento)
 
-    # padrão comum: 11–13 dígitos + letra final
-    match = re.search(r"\d{11,13}[A-Z]", texto)
+    if score < threshold:
 
-    if match:
-        return match.group()
+        raise ValidationError(
+            "O nome informado não corresponde suficientemente ao documento."
+        )
 
-    # fallback: apenas números longos
-    match = re.search(r"\d{11,13}", texto)
+    return True
+# import unicodedata
+# import re
 
-    if match:
-        return match.group()
 
-    return None
+# def normalizar_texto(texto):
+#     """
+#     Remove acentos e caracteres especiais
+#     """
+
+#     if not texto:
+#         return ""
+
+#     texto = unicodedata.normalize("NFKD", texto)
+#     texto = texto.encode("ASCII", "ignore").decode("ASCII")
+
+#     texto = texto.upper()
+
+#     texto = re.sub(r"[^A-Z0-9\s]", " ", texto)
+
+#     texto = re.sub(r"\s+", " ", texto)
+
+#     return texto.strip()
+
+
+# def normalizar_texto_ocr(texto):
+#     """
+#     Corrige erros comuns do OCR
+#     """
+
+#     if not texto:
+#         return ""
+
+#     texto = texto.upper()
+
+#     texto = texto.replace("O", "0")
+#     texto = texto.replace("I", "1")
+#     texto = texto.replace("L", "1")
+
+#     texto = re.sub(r"[^A-Z0-9]", "", texto)
+
+#     return texto
+
+
+# def extrair_numero_bi(texto):
+#     """
+#     Extrai número do BI a partir do texto OCR
+#     """
+
+#     texto = normalizar_texto_ocr(texto)
+
+#     # padrão comum: 11–13 dígitos + letra final
+#     match = re.search(r"\d{11,13}[A-Z]", texto)
+
+#     if match:
+#         return match.group()
+
+#     # fallback: apenas números longos
+#     match = re.search(r"\d{11,13}", texto)
+
+#     if match:
+#         return match.group()
+
+#     return None
 # import os
 # from difflib import SequenceMatcher
 # from django.core.exceptions import ValidationError
