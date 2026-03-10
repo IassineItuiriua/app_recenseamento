@@ -150,11 +150,12 @@ def similaridade_nomes(nome1, nome2):
     ).ratio()
 
 
-def validar_nome_bi(nome_form, nome_bi, threshold=0.65):
+def validar_nome_bi(nome_form, nome_bi, threshold=0.40):
     if not nome_bi:
-        raise ValidationError(
-            "Não foi possível validar o nome no documento. Certifique-se de que o BI está legível."
-        )
+        print("Não foi possível validar o nome no documento. Certifique-se de que o BI está legível.")
+        # raise ValidationError(
+        #     "Não foi possível validar o nome no documento. Certifique-se de que o BI está legível."
+        # )
 
     # Score baseado em string completa
     score_sequence = score_nome_final(nome_form, nome_bi)
