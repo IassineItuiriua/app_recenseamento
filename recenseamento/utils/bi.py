@@ -5,30 +5,64 @@ from django.core.exceptions import ValidationError
 
 def normalizar_nome(nome):
 
+    if not nome:
+        return ""
+
     nome = nome.upper().strip()
 
     nome = unicodedata.normalize("NFD", nome)
 
-    nome = "".join(c for c in nome if unicodedata.category(c) != "Mn")
+    nome = "".join(
+        c for c in nome
+        if unicodedata.category(c) != "Mn"
+    )
 
     return nome
 
 
-def nomes_semelhantes(nome1, nome2):
+def similaridade_nome(nome1, nome2):
 
     nome1 = normalizar_nome(nome1)
-
     nome2 = normalizar_nome(nome2)
 
     return SequenceMatcher(None, nome1, nome2).ratio()
 
 
-def validar_documento_completo(nome_digitado, nome_documento, threshold=0.6):
+def validar_documento_completo(
+    nome_form,
+    bi_file,
+    selfie_file,
+    threshold_nome=0.55
+):
 
-    score = nomes_semelhantes(nome_digitado, nome_documento)
+    """
+    Validação básica:
+    - verifica se arquivos existem
+    - compara nome digitado com nome detectado (simulado)
+    """
 
-    if score < threshold:
+    if not nome_form:
+        raise ValidationError(
+            "Nome completo é obrigatório."
+        )
 
+    if not bi_file:
+        raise ValidationError(
+            "Documento de identidade é obrigatório."
+        )
+
+    if not selfie_file:
+        raise ValidationError(
+            "Selfie é obrigatória."
+        )
+
+    # Simulação de nome encontrado no documento
+    # (OCR será implementado depois)
+    nome_documento = nome_form
+
+    score = similaridade_nome(nome_form, nome_documento)
+
+    if score < threshold_nome:
         raise ValidationError(
             "O nome informado não corresponde suficientemente ao documento."
         )
