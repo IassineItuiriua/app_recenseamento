@@ -17,6 +17,7 @@ import os
 import tempfile
 from difflib import SequenceMatcher
 from django.conf import settings
+from usuarios.views import per
 
 # ======================
 # TESSERACT
@@ -29,7 +30,7 @@ def validar_documento_completo(
     nome_form,
     bi_file,
     selfie_file=None,
-    threshold_nome=0.40
+    threshold_nome=0.55
 ):
     bi_path = selfie_path = None
 
@@ -122,20 +123,21 @@ def normalizar_texto(texto):
 
 
 def extrair_nome_do_bi(texto):
-    texto = texto.upper()
+    if not texto:
+        return ""
 
-    padrao = r"NOME\s*[:\-]?\s*([A-Z\s]+)"
-    match = re.search(padrao, texto)
+    linhas = [l.strip() for l in texto.upper().splitlines() if len(l.strip()) > 5]
 
-    if match:
-        return match.group(1).strip()
+    # 1️⃣ tentar linha com "NOME"
+    for linha in linhas:
+        if "NOME" in linha:
+            return linha.replace("NOME", "").strip()
 
-    linhas = texto.split("\n")
+    # 2️⃣ fallback: linha com mais letras (provável nome completo)
     candidatas = [
-        l.strip() for l in linhas
-        if len(l.strip()) > 8
-        and sum(c.isalpha() for c in l) > 8
-        and "REPUBLICA" not in l
+        l for l in linhas
+        if sum(c.isalpha() for c in l) > 10
+        and not any(p in l for p in ["REPUBLICA", "MINISTERIO", "DATA", "EMISSAO"])
     ]
 
     return max(candidatas, key=len, default="")
@@ -150,30 +152,19 @@ def similaridade_nomes(nome1, nome2):
     ).ratio()
 
 
-def validar_nome_bi(nome_form, nome_bi, threshold=0.40):
+def validar_nome_bi(nome_form, nome_bi, threshold=0.55):
     if not nome_bi:
-        print("Não foi possível validar o nome no documento. Certifique-se de que o BI está legível.")
-        # raise ValidationError(
-        #     "Não foi possível validar o nome no documento. Certifique-se de que o BI está legível."
-        # )
+        raise ValidationError(
+            "Não foi possível validar o nome no documento. "
+            "Certifique-se de que o BI está legível."
+        )
 
-    # Score baseado em string completa
-    score_sequence = score_nome_final(nome_form, nome_bi)
-    
-    # Score baseado em palavras em comum
-    score_palavras = similaridade_por_palavras(nome_form, nome_bi)
+    score = score_nome_final(nome_form, nome_bi)
 
-    # Média ponderada (50% sequence, 50% palavras)
-    score_final = (score_sequence + score_palavras) / 2
-
-    # if score_final < threshold:
-    #     raise ValidationError(
-    #         "O nome informado não corresponde suficientemente ao documento. "
-    #         "Verifique se digitou corretamente conforme o BI."
-    #     )
-    
-    if score_final < threshold:
-        print("⚠️ Aviso: Nome com baixa similaridade com o BI.")
+    if score < threshold:
+        raise ValidationError(
+            "O nome informado não corresponde ao documento."
+        )
 # ======================
 # OCR BI
 # ======================
@@ -283,7 +274,7 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
             nome_form=nome_form,
             bi_file=bi,
             selfie_file=selfie,
-            threshold_nome=0.40
+            threshold_nome=0.55
         )
 
         return cleaned
