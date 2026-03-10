@@ -2,22 +2,42 @@ import tempfile
 import os
 
 
-def salvar_temp(file):
+def salvar_temp_upload(uploaded_file):
+    """
+    Salva um UploadedFile temporariamente no sistema.
+    Retorna o caminho do arquivo salvo.
+    """
 
-    temp = tempfile.NamedTemporaryFile(delete=False)
+    suffix = os.path.splitext(uploaded_file.name)[1]
 
-    for chunk in file.chunks():
+    temp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+
+    for chunk in uploaded_file.chunks():
         temp.write(chunk)
 
     temp.close()
 
     return temp.name
+# import tempfile
+# import os
 
 
-def remover_temp(path):
+# def salvar_temp(file):
 
-    if path and os.path.exists(path):
-        os.remove(path)
+#     temp = tempfile.NamedTemporaryFile(delete=False)
+
+#     for chunk in file.chunks():
+#         temp.write(chunk)
+
+#     temp.close()
+
+#     return temp.name
+
+
+# def remover_temp(path):
+
+#     if path and os.path.exists(path):
+#         os.remove(path)
 # import tempfile
 # import os
 

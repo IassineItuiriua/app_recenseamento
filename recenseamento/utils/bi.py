@@ -1,118 +1,181 @@
-import os
-from difflib import SequenceMatcher
-from django.core.exceptions import ValidationError
-from django.conf import settings
-
-from .files import salvar_temp, remover_temp
-from .ocr import extrair_texto_bi, extrair_nome_do_bi, normalizar_texto
+import unicodedata
+import re
 
 
-STOPWORDS = {"DE", "DA", "DO", "DOS", "DAS", "E"}
+def normalizar_texto(texto):
+    """
+    Remove acentos e caracteres especiais
+    """
+
+    if not texto:
+        return ""
+
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = texto.encode("ASCII", "ignore").decode("ASCII")
+
+    texto = texto.upper()
+
+    texto = re.sub(r"[^A-Z0-9\s]", " ", texto)
+
+    texto = re.sub(r"\s+", " ", texto)
+
+    return texto.strip()
 
 
-def normalizar_nome(nome):
+def normalizar_texto_ocr(texto):
+    """
+    Corrige erros comuns do OCR
+    """
 
-    nome = normalizar_texto(nome)
+    if not texto:
+        return ""
 
-    partes = [
-        p for p in nome.split()
-        if p not in STOPWORDS
-    ]
+    texto = texto.upper()
 
-    return " ".join(partes)
+    texto = texto.replace("O", "0")
+    texto = texto.replace("I", "1")
+    texto = texto.replace("L", "1")
 
+    texto = re.sub(r"[^A-Z0-9]", "", texto)
 
-def similaridade_nomes(nome1, nome2):
-
-    nome1 = normalizar_nome(nome1)
-    nome2 = normalizar_nome(nome2)
-
-    return SequenceMatcher(None, nome1, nome2).ratio()
-
-
-def validar_nome_bi(nome_form, nome_bi, threshold):
-
-    if not nome_bi:
-
-        raise ValidationError(
-            "Não foi possível ler o nome no documento. "
-            "Envie uma imagem mais nítida."
-        )
-
-    score = similaridade_nomes(nome_form, nome_bi)
-
-    if score < threshold:
-
-        raise ValidationError(
-            "O nome informado não corresponde ao documento."
-        )
+    return texto
 
 
-def verificar_face(bi_path, selfie_path):
+def extrair_numero_bi(texto):
+    """
+    Extrai número do BI a partir do texto OCR
+    """
 
-    try:
+    texto = normalizar_texto_ocr(texto)
 
-        from deepface import DeepFace
+    # padrão comum: 11–13 dígitos + letra final
+    match = re.search(r"\d{11,13}[A-Z]", texto)
 
-        resultado = DeepFace.verify(
-            img1_path=bi_path,
-            img2_path=selfie_path,
-            model_name="ArcFace",
-            detector_backend="retinaface",
-            enforce_detection=False
-        )
+    if match:
+        return match.group()
 
-        distance = resultado.get("distance", 1)
+    # fallback: apenas números longos
+    match = re.search(r"\d{11,13}", texto)
 
-        return distance <= 0.85
+    if match:
+        return match.group()
 
-    except Exception as e:
+    return None
+# import os
+# from difflib import SequenceMatcher
+# from django.core.exceptions import ValidationError
+# from django.conf import settings
 
-        print(f"[ERRO FACE] {e}")
+# from .files import salvar_temp, remover_temp
+# from .ocr import extrair_texto_bi, extrair_nome_do_bi, normalizar_texto
 
-        return False
+
+# STOPWORDS = {"DE", "DA", "DO", "DOS", "DAS", "E"}
 
 
-def validar_documento_completo(
-    nome_form,
-    bi_file,
-    selfie_file=None,
-    threshold_nome=0.60
-):
+# def normalizar_nome(nome):
 
-    bi_path = None
-    selfie_path = None
+#     nome = normalizar_texto(nome)
 
-    try:
+#     partes = [
+#         p for p in nome.split()
+#         if p not in STOPWORDS
+#     ]
 
-        bi_path = salvar_temp(bi_file)
+#     return " ".join(partes)
 
-        if getattr(settings, "ENABLE_OCR", True):
 
-            texto = extrair_texto_bi(bi_path)
+# def similaridade_nomes(nome1, nome2):
 
-            nome_bi = extrair_nome_do_bi(texto)
+#     nome1 = normalizar_nome(nome1)
+#     nome2 = normalizar_nome(nome2)
 
-            validar_nome_bi(
-                nome_form,
-                nome_bi,
-                threshold_nome
-            )
+#     return SequenceMatcher(None, nome1, nome2).ratio()
 
-        if getattr(settings, "ENABLE_FACE_RECOGNITION", False) and selfie_file:
 
-            selfie_path = salvar_temp(selfie_file)
+# def validar_nome_bi(nome_form, nome_bi, threshold):
 
-            if not verificar_face(bi_path, selfie_path):
+#     if not nome_bi:
 
-                raise ValidationError(
-                    "A selfie não corresponde ao documento de identidade."
-                )
+#         raise ValidationError(
+#             "Não foi possível ler o nome no documento. "
+#             "Envie uma imagem mais nítida."
+#         )
 
-    finally:
+#     score = similaridade_nomes(nome_form, nome_bi)
 
-        remover_temp(bi_path)
-        remover_temp(selfie_path)
+#     if score < threshold:
+
+#         raise ValidationError(
+#             "O nome informado não corresponde ao documento."
+#         )
+
+
+# def verificar_face(bi_path, selfie_path):
+
+#     try:
+
+#         from deepface import DeepFace
+
+#         resultado = DeepFace.verify(
+#             img1_path=bi_path,
+#             img2_path=selfie_path,
+#             model_name="ArcFace",
+#             detector_backend="retinaface",
+#             enforce_detection=False
+#         )
+
+#         distance = resultado.get("distance", 1)
+
+#         return distance <= 0.85
+
+#     except Exception as e:
+
+#         print(f"[ERRO FACE] {e}")
+
+#         return False
+
+
+# def validar_documento_completo(
+#     nome_form,
+#     bi_file,
+#     selfie_file=None,
+#     threshold_nome=0.60
+# ):
+
+#     bi_path = None
+#     selfie_path = None
+
+#     try:
+
+#         bi_path = salvar_temp(bi_file)
+
+#         if getattr(settings, "ENABLE_OCR", True):
+
+#             texto = extrair_texto_bi(bi_path)
+
+#             nome_bi = extrair_nome_do_bi(texto)
+
+#             validar_nome_bi(
+#                 nome_form,
+#                 nome_bi,
+#                 threshold_nome
+#             )
+
+#         if getattr(settings, "ENABLE_FACE_RECOGNITION", False) and selfie_file:
+
+#             selfie_path = salvar_temp(selfie_file)
+
+#             if not verificar_face(bi_path, selfie_path):
+
+#                 raise ValidationError(
+#                     "A selfie não corresponde ao documento de identidade."
+#                 )
+
+#     finally:
+
+#         remover_temp(bi_path)
+#         remover_temp(selfie_path)
 # import re
 
 

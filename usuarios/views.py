@@ -1,72 +1,66 @@
-# usuarios/views.py
 import os
-from django.db import IntegrityError, transaction
+import logging
+from datetime import datetime, date
+
+from django.db import IntegrityError
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.conf import settings
-from datetime import date
-import logging
-from .forms import CompletarPerfilUsuarioForm, UserRegistrationForm
-from recenseamento.forms import RecenseamentoForm, CompletarPerfilCidadaoForm
-from recenseamento.models import Recenseamento, PerfilCidadao
-from .forms import EmailAuthenticationForm
-import shutil
 
-# OCR Tesseract Windows
-import pytesseract
-# Configuração multiplataforma do Tesseract
-# if settings.ENABLE_OCR:
-#     if os.name == "nt":
-#         pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-#     else:
-#         tesseract_path = shutil.which("tesseract")
-#         if not tesseract_path:
-#             raise RuntimeError("Tesseract não encontrado no sistema")
-#         pytesseract.pytesseract.tesseract_cmd = tesseract_path
-pytesseract.pytesseract.tesseract_cmd = shutil.which("tesseract")
-pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_CMD", "/usr/bin/tesseract")
+from .forms import (
+    CompletarPerfilUsuarioForm,
+    UserRegistrationForm,
+    EmailAuthenticationForm,
+)
+
+from recenseamento.forms import (
+    RecenseamentoForm,
+    CompletarPerfilCidadaoForm,
+)
+
+from recenseamento.models import Recenseamento, PerfilCidadao
+
+
 logger = logging.getLogger(__name__)
 
 
-import unicodedata
-from difflib import SequenceMatcher
-from datetime import datetime, date
-
-
-def normalizar_nome(nome):
-    if not nome:
-        return ""
-    nome = nome.upper().strip()
-    nome = unicodedata.normalize("NFKD", nome)
-    nome = "".join(c for c in nome if not unicodedata.combining(c))
-    return nome
-
-
-def nomes_semelhantes(a, b):
-    a = normalizar_nome(a)
-    b = normalizar_nome(b)
-    return SequenceMatcher(None, a, b).ratio()
-
+# ======================================================
+# FUNÇÕES AUXILIARES
+# ======================================================
 
 def calcular_idade(data_nasc):
+
     hoje = date.today()
+
     return hoje.year - data_nasc.year - (
         (hoje.month, hoje.day) < (data_nasc.month, data_nasc.day)
     )
+
+
 # ======================================================
 # CADASTRO
 # ======================================================
+
 def cadastro(request):
+
     if request.method == "POST":
+
         form = UserRegistrationForm(request.POST)
+
         if form.is_valid():
-            novo_usuario = form.save()
+
+            form.save()
+
             messages.success(request, "Conta criada com sucesso. Faça login.")
+
             return redirect("usuarios:login")
+
     else:
+
         form = UserRegistrationForm()
+
     return render(request, "usuarios/cadastro.html", {"form": form})
 
 
@@ -74,18 +68,24 @@ def cadastro(request):
 # LOGIN
 # ======================================================
 
-
-# usuarios/views.py
-
 def login_view(request):
+
     next_url = request.GET.get("next") or request.POST.get("next") or ""
 
     if request.method == "POST":
+
         form = EmailAuthenticationForm(data=request.POST, request=request)
+
         if form.is_valid():
+
             login(request, form.get_user())
-            return redirect(next_url if next_url.startswith("/") else "usuarios:painel")
+
+            return redirect(
+                next_url if next_url.startswith("/") else "usuarios:painel"
+            )
+
     else:
+
         form = EmailAuthenticationForm(request=request)
 
     return render(request, "usuarios/login.html", {
@@ -94,45 +94,63 @@ def login_view(request):
     })
 
 
-
-
-
-
 # ======================================================
 # LOGOUT
 # ======================================================
+
 def logout_view(request):
+
     logout(request)
+
     return redirect("/")
 
 
 # ======================================================
 # COMPLETAR PERFIL
 # ======================================================
+
 @login_required
 def completar_perfil(request):
+
     usuario = request.user
+
     perfil = PerfilCidadao.objects.filter(user=usuario).first()
+
     recenseamento = Recenseamento.objects.filter(usuario=usuario).first()
 
     idade = None
     data_nasc = None
 
     if recenseamento and recenseamento.data_nascimento:
+
         data_nasc = recenseamento.data_nascimento
+
     elif perfil and perfil.data_nascimento:
+
         data_nasc = perfil.data_nascimento
 
     if data_nasc:
+
         idade = calcular_idade(data_nasc)
 
     if request.method == "POST":
 
         form_usuario = CompletarPerfilUsuarioForm(request.POST, instance=usuario)
-        form_recenseamento = RecenseamentoForm(request.POST, request.FILES, instance=recenseamento)
-        form_cidadao = CompletarPerfilCidadaoForm(request.POST, request.FILES, instance=perfil)
+
+        form_recenseamento = RecenseamentoForm(
+            request.POST,
+            request.FILES,
+            instance=recenseamento
+        )
+
+        form_cidadao = CompletarPerfilCidadaoForm(
+            request.POST,
+            request.FILES,
+            instance=perfil
+        )
 
         def render_forms():
+
             return render(request, "usuarios/completar_perfil.html", {
                 "form_usuario": form_usuario,
                 "form_recenseamento": form_recenseamento,
@@ -141,105 +159,94 @@ def completar_perfil(request):
             })
 
         if not form_usuario.is_valid():
+
             return render_forms()
 
-        usuario_atualizado = form_usuario.save(commit=False)
-
-        for field in ["first_name", "last_name", "telefone"]:
-            valor = form_usuario.cleaned_data.get(field)
-            if valor not in [None, ""]:
-                setattr(usuario_atualizado, field, valor)
-
-        usuario_atualizado.save()
+        usuario = form_usuario.save()
 
         # -------- DATA NASCIMENTO --------
+
         if idade is None:
 
             data_nasc_str = request.POST.get("data_nascimento")
 
             if not data_nasc_str:
+
                 messages.error(request, "Informe a data de nascimento.")
+
                 return render_forms()
 
             try:
-                data_nasc = datetime.strptime(data_nasc_str, "%Y-%m-%d").date()
+
+                data_nasc = datetime.strptime(
+                    data_nasc_str,
+                    "%Y-%m-%d"
+                ).date()
+
             except:
+
                 messages.error(request, "Data de nascimento inválida.")
+
                 return render_forms()
 
             idade = calcular_idade(data_nasc)
 
-        # ================= RECENSEAMENTO ≤35 =================
+        # ================= RECENSEAMENTO =================
+
         if idade <= 35:
 
             if not form_recenseamento.is_valid():
+
                 return render_forms()
 
             rec = form_recenseamento.save(commit=False)
+
             rec.usuario = usuario
+
             rec.save()
 
-            try:
-                if rec.nim:
-                    from notificacoes.accoes import apos_recenseamento
-                    apos_recenseamento(usuario, rec.nim)
-            except Exception as e:
-                logger.error(f"Erro ao enviar email de recenseamento: {e}")
+            messages.success(
+                request,
+                "Recenseamento concluído com sucesso."
+            )
 
-            messages.success(request, "Recenseamento concluído com sucesso.")
             return redirect("usuarios:painel")
 
-        # ================= PERFIL CIDADÃO >35 =================
+        # ================= PERFIL CIDADÃO =================
 
         if not form_cidadao.is_valid():
-            return render_forms()
 
-        foto = request.FILES.get("foto")
-        bi_file = request.FILES.get("bi")
-
-        if not foto or not bi_file:
-            messages.error(request, "Para maiores de 35 anos é obrigatório enviar foto e BI.")
             return render_forms()
 
         perfil = form_cidadao.save(commit=False)
+
         perfil.user = usuario
+
         perfil.status_validacao = "PENDENTE"
 
         try:
+
             perfil.save()
+
         except IntegrityError:
-            messages.error(request, "Número do BI já registrado para outro usuário.")
+
+            messages.error(
+                request,
+                "Número do BI já registrado para outro usuário."
+            )
+
             return render_forms()
 
-        # -------- SINCRONIZA NOME --------
-        nome_completo = perfil.nome_completo.strip().split(" ", 1)
-        usuario.first_name = nome_completo[0]
-        usuario.last_name = nome_completo[1] if len(nome_completo) > 1 else ""
-        usuario.save()
-
-        perfil.refresh_from_db()
-
-        # -------- EMAIL --------
-        if perfil.completo() and not perfil.acao_completada:
-
-            try:
-                from notificacoes.accoes import apos_completar_perfil
-
-                apos_completar_perfil(usuario)
-
-                perfil.acao_completada = True
-                perfil.save(update_fields=["acao_completada"])
-
-            except Exception as e:
-                logger.error(f"Erro ao enviar email: {e}")
-
         messages.success(request, "Perfil atualizado com sucesso.")
+
         return redirect("usuarios:painel")
 
     else:
 
         form_usuario = CompletarPerfilUsuarioForm(instance=usuario)
+
         form_recenseamento = RecenseamentoForm(instance=recenseamento)
+
         form_cidadao = CompletarPerfilCidadaoForm(instance=perfil)
 
     return render(request, "usuarios/completar_perfil.html", {
@@ -249,44 +256,313 @@ def completar_perfil(request):
         "idade": idade or 0,
     })
 
+
 # ======================================================
 # PAINEL
 # ======================================================
+
 @login_required
 def painel(request):
+
     user = request.user
+
     recenseamento = Recenseamento.objects.filter(usuario=user).first()
+
     perfil = PerfilCidadao.objects.filter(user=user).first()
-    return render(request, "usuarios/painel.html", {"recenseamento": recenseamento, "perfil": perfil})
+
+    return render(request, "usuarios/painel.html", {
+        "recenseamento": recenseamento,
+        "perfil": perfil
+    })
+# # usuarios/views.py
+# import os
+# from django.db import IntegrityError, transaction
+# from django.shortcuts import get_object_or_404, render, redirect
+# from django.contrib.auth import login, logout
+# from django.contrib.auth.decorators import login_required
+# from django.contrib import messages
+# from django.conf import settings
+# from datetime import date
+# import logging
+# from .forms import CompletarPerfilUsuarioForm, UserRegistrationForm
+# from recenseamento.forms import RecenseamentoForm, CompletarPerfilCidadaoForm
+# from recenseamento.models import Recenseamento, PerfilCidadao
+# from .forms import EmailAuthenticationForm
+# import shutil
+
+# # OCR Tesseract Windows
+# import pytesseract
+# # Configuração multiplataforma do Tesseract
+# # if settings.ENABLE_OCR:
+# #     if os.name == "nt":
+# #         pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# #     else:
+# #         tesseract_path = shutil.which("tesseract")
+# #         if not tesseract_path:
+# #             raise RuntimeError("Tesseract não encontrado no sistema")
+# #         pytesseract.pytesseract.tesseract_cmd = tesseract_path
+# pytesseract.pytesseract.tesseract_cmd = shutil.which("tesseract")
+# pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_CMD", "/usr/bin/tesseract")
+# logger = logging.getLogger(__name__)
 
 
-# ======================================================
-# VALIDAR FOTO CIDADÃO (Face Recognition)
-# ======================================================
-@login_required
-def validar_foto_cidadao(request, perfil_id):
-    from recenseamento.services.reconhecimento_facial import verificar_foto
-    perfil = get_object_or_404(PerfilCidadao, id=perfil_id)
+# import unicodedata
+# from difflib import SequenceMatcher
+# from datetime import datetime, date
 
-    if not settings.FACE_RECOGNITION_ENABLED:
-        perfil.status_validacao = "PENDENTE"
-        perfil.save()
-        messages.info(request, "Validação será feita manualmente.")
-        return redirect("usuarios:painel")
 
-    try:
-        verificado = False
-        if perfil.bi and perfil.foto:
-            verificado = verificar_foto(perfil.bi.path, perfil.foto.path)
+# def normalizar_nome(nome):
+#     if not nome:
+#         return ""
+#     nome = nome.upper().strip()
+#     nome = unicodedata.normalize("NFKD", nome)
+#     nome = "".join(c for c in nome if not unicodedata.combining(c))
+#     return nome
 
-        perfil.foto_verificada = verificado
-        perfil.status_validacao = "VALIDADO" if verificado else "REJEITADO"
-        perfil.save()
-    except Exception as e:
-        perfil.status_validacao = "ERRO"
-        perfil.save()
-        logger.error(f"Erro no reconhecimento facial: {e}", exc_info=True)
-        messages.error(request, "Ocorreu um erro ao validar a foto. Tente novamente.")
 
-    return redirect("usuarios:painel")
+# def nomes_semelhantes(a, b):
+#     a = normalizar_nome(a)
+#     b = normalizar_nome(b)
+#     return SequenceMatcher(None, a, b).ratio()
+
+
+# def calcular_idade(data_nasc):
+#     hoje = date.today()
+#     return hoje.year - data_nasc.year - (
+#         (hoje.month, hoje.day) < (data_nasc.month, data_nasc.day)
+#     )
+# # ======================================================
+# # CADASTRO
+# # ======================================================
+# def cadastro(request):
+#     if request.method == "POST":
+#         form = UserRegistrationForm(request.POST)
+#         if form.is_valid():
+#             novo_usuario = form.save()
+#             messages.success(request, "Conta criada com sucesso. Faça login.")
+#             return redirect("usuarios:login")
+#     else:
+#         form = UserRegistrationForm()
+#     return render(request, "usuarios/cadastro.html", {"form": form})
+
+
+# # ======================================================
+# # LOGIN
+# # ======================================================
+
+
+# # usuarios/views.py
+
+# def login_view(request):
+#     next_url = request.GET.get("next") or request.POST.get("next") or ""
+
+#     if request.method == "POST":
+#         form = EmailAuthenticationForm(data=request.POST, request=request)
+#         if form.is_valid():
+#             login(request, form.get_user())
+#             return redirect(next_url if next_url.startswith("/") else "usuarios:painel")
+#     else:
+#         form = EmailAuthenticationForm(request=request)
+
+#     return render(request, "usuarios/login.html", {
+#         "form": form,
+#         "next": next_url
+#     })
+
+
+
+
+
+
+# # ======================================================
+# # LOGOUT
+# # ======================================================
+# def logout_view(request):
+#     logout(request)
+#     return redirect("/")
+
+
+# # ======================================================
+# # COMPLETAR PERFIL
+# # ======================================================
+# @login_required
+# def completar_perfil(request):
+#     usuario = request.user
+#     perfil = PerfilCidadao.objects.filter(user=usuario).first()
+#     recenseamento = Recenseamento.objects.filter(usuario=usuario).first()
+
+#     idade = None
+#     data_nasc = None
+
+#     if recenseamento and recenseamento.data_nascimento:
+#         data_nasc = recenseamento.data_nascimento
+#     elif perfil and perfil.data_nascimento:
+#         data_nasc = perfil.data_nascimento
+
+#     if data_nasc:
+#         idade = calcular_idade(data_nasc)
+
+#     if request.method == "POST":
+
+#         form_usuario = CompletarPerfilUsuarioForm(request.POST, instance=usuario)
+#         form_recenseamento = RecenseamentoForm(request.POST, request.FILES, instance=recenseamento)
+#         form_cidadao = CompletarPerfilCidadaoForm(request.POST, request.FILES, instance=perfil)
+
+#         def render_forms():
+#             return render(request, "usuarios/completar_perfil.html", {
+#                 "form_usuario": form_usuario,
+#                 "form_recenseamento": form_recenseamento,
+#                 "form_cidadao": form_cidadao,
+#                 "idade": idade or 0,
+#             })
+
+#         if not form_usuario.is_valid():
+#             return render_forms()
+
+#         usuario_atualizado = form_usuario.save(commit=False)
+
+#         for field in ["first_name", "last_name", "telefone"]:
+#             valor = form_usuario.cleaned_data.get(field)
+#             if valor not in [None, ""]:
+#                 setattr(usuario_atualizado, field, valor)
+
+#         usuario_atualizado.save()
+
+#         # -------- DATA NASCIMENTO --------
+#         if idade is None:
+
+#             data_nasc_str = request.POST.get("data_nascimento")
+
+#             if not data_nasc_str:
+#                 messages.error(request, "Informe a data de nascimento.")
+#                 return render_forms()
+
+#             try:
+#                 data_nasc = datetime.strptime(data_nasc_str, "%Y-%m-%d").date()
+#             except:
+#                 messages.error(request, "Data de nascimento inválida.")
+#                 return render_forms()
+
+#             idade = calcular_idade(data_nasc)
+
+#         # ================= RECENSEAMENTO ≤35 =================
+#         if idade <= 35:
+
+#             if not form_recenseamento.is_valid():
+#                 return render_forms()
+
+#             rec = form_recenseamento.save(commit=False)
+#             rec.usuario = usuario
+#             rec.save()
+
+#             try:
+#                 if rec.nim:
+#                     from notificacoes.accoes import apos_recenseamento
+#                     apos_recenseamento(usuario, rec.nim)
+#             except Exception as e:
+#                 logger.error(f"Erro ao enviar email de recenseamento: {e}")
+
+#             messages.success(request, "Recenseamento concluído com sucesso.")
+#             return redirect("usuarios:painel")
+
+#         # ================= PERFIL CIDADÃO >35 =================
+
+#         if not form_cidadao.is_valid():
+#             return render_forms()
+
+#         foto = request.FILES.get("foto")
+#         bi_file = request.FILES.get("bi")
+
+#         if not foto or not bi_file:
+#             messages.error(request, "Para maiores de 35 anos é obrigatório enviar foto e BI.")
+#             return render_forms()
+
+#         perfil = form_cidadao.save(commit=False)
+#         perfil.user = usuario
+#         perfil.status_validacao = "PENDENTE"
+
+#         try:
+#             perfil.save()
+#         except IntegrityError:
+#             messages.error(request, "Número do BI já registrado para outro usuário.")
+#             return render_forms()
+
+#         # -------- SINCRONIZA NOME --------
+#         nome_completo = perfil.nome_completo.strip().split(" ", 1)
+#         usuario.first_name = nome_completo[0]
+#         usuario.last_name = nome_completo[1] if len(nome_completo) > 1 else ""
+#         usuario.save()
+
+#         perfil.refresh_from_db()
+
+#         # -------- EMAIL --------
+#         if perfil.completo() and not perfil.acao_completada:
+
+#             try:
+#                 from notificacoes.accoes import apos_completar_perfil
+
+#                 apos_completar_perfil(usuario)
+
+#                 perfil.acao_completada = True
+#                 perfil.save(update_fields=["acao_completada"])
+
+#             except Exception as e:
+#                 logger.error(f"Erro ao enviar email: {e}")
+
+#         messages.success(request, "Perfil atualizado com sucesso.")
+#         return redirect("usuarios:painel")
+
+#     else:
+
+#         form_usuario = CompletarPerfilUsuarioForm(instance=usuario)
+#         form_recenseamento = RecenseamentoForm(instance=recenseamento)
+#         form_cidadao = CompletarPerfilCidadaoForm(instance=perfil)
+
+#     return render(request, "usuarios/completar_perfil.html", {
+#         "form_usuario": form_usuario,
+#         "form_recenseamento": form_recenseamento,
+#         "form_cidadao": form_cidadao,
+#         "idade": idade or 0,
+#     })
+
+# # ======================================================
+# # PAINEL
+# # ======================================================
+# @login_required
+# def painel(request):
+#     user = request.user
+#     recenseamento = Recenseamento.objects.filter(usuario=user).first()
+#     perfil = PerfilCidadao.objects.filter(user=user).first()
+#     return render(request, "usuarios/painel.html", {"recenseamento": recenseamento, "perfil": perfil})
+
+
+# # ======================================================
+# # VALIDAR FOTO CIDADÃO (Face Recognition)
+# # ======================================================
+# @login_required
+# def validar_foto_cidadao(request, perfil_id):
+#     from recenseamento.services.reconhecimento_facial import verificar_foto
+#     perfil = get_object_or_404(PerfilCidadao, id=perfil_id)
+
+#     if not settings.FACE_RECOGNITION_ENABLED:
+#         perfil.status_validacao = "PENDENTE"
+#         perfil.save()
+#         messages.info(request, "Validação será feita manualmente.")
+#         return redirect("usuarios:painel")
+
+#     try:
+#         verificado = False
+#         if perfil.bi and perfil.foto:
+#             verificado = verificar_foto(perfil.bi.path, perfil.foto.path)
+
+#         perfil.foto_verificada = verificado
+#         perfil.status_validacao = "VALIDADO" if verificado else "REJEITADO"
+#         perfil.save()
+#     except Exception as e:
+#         perfil.status_validacao = "ERRO"
+#         perfil.save()
+#         logger.error(f"Erro no reconhecimento facial: {e}", exc_info=True)
+#         messages.error(request, "Ocorreu um erro ao validar a foto. Tente novamente.")
+
+#     return redirect("usuarios:painel")
 

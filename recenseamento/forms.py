@@ -13,10 +13,16 @@ class RecenseamentoForm(forms.ModelForm):
         exclude = ("usuario", "nim", "foi_submetido_exame", "resultado_exame")
 
     def clean_data_nascimento(self):
+
         data = self.cleaned_data.get("data_nascimento")
 
-        idade = date.today().year - data.year - (
-            (date.today().month, date.today().day) < (data.month, data.day)
+        if not data:
+            raise ValidationError("Informe a data de nascimento.")
+
+        hoje = date.today()
+
+        idade = hoje.year - data.year - (
+            (hoje.month, hoje.day) < (data.month, data.day)
         )
 
         if idade < 18 or idade > 35:
@@ -33,6 +39,10 @@ class RecenseamentoForm(forms.ModelForm):
         bi = cleaned.get("documento_identidade")
         selfie = cleaned.get("foto_capturada")
 
+        # Se outros erros já existirem, não continuar
+        if self.errors:
+            return cleaned
+
         if not bi or not selfie:
             raise ValidationError(
                 "Documento de identidade e selfie são obrigatórios."
@@ -42,7 +52,7 @@ class RecenseamentoForm(forms.ModelForm):
             nome_form=nome_form,
             bi_file=bi,
             selfie_file=selfie,
-            threshold_nome=0.55
+            threshold_nome=0.60
         )
 
         return cleaned
@@ -67,8 +77,13 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
 
         data = self.cleaned_data.get("data_nascimento")
 
-        idade = date.today().year - data.year - (
-            (date.today().month, date.today().day) < (data.month, data.day)
+        if not data:
+            raise ValidationError("Informe a data de nascimento.")
+
+        hoje = date.today()
+
+        idade = hoje.year - data.year - (
+            (hoje.month, hoje.day) < (data.month, data.day)
         )
 
         if idade < 18:
@@ -85,6 +100,9 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
         bi = cleaned.get("bi")
         selfie = cleaned.get("foto")
 
+        if self.errors:
+            return cleaned
+
         if not bi or not selfie:
             raise ValidationError(
                 "Documento e foto são obrigatórios."
@@ -94,10 +112,110 @@ class CompletarPerfilCidadaoForm(forms.ModelForm):
             nome_form=nome_form,
             bi_file=bi,
             selfie_file=selfie,
-            threshold_nome=0.55
+            threshold_nome=0.60
         )
 
         return cleaned
+# from django import forms
+# from django.core.exceptions import ValidationError
+# from datetime import date
+
+# from .models import Recenseamento, PerfilCidadao
+# from recenseamento.utils.bi import validar_documento_completo
+
+
+# class RecenseamentoForm(forms.ModelForm):
+
+#     class Meta:
+#         model = Recenseamento
+#         exclude = ("usuario", "nim", "foi_submetido_exame", "resultado_exame")
+
+#     def clean_data_nascimento(self):
+#         data = self.cleaned_data.get("data_nascimento")
+
+#         idade = date.today().year - data.year - (
+#             (date.today().month, date.today().day) < (data.month, data.day)
+#         )
+
+#         if idade < 18 or idade > 35:
+#             raise ValidationError("Idade permitida: 18 a 35 anos.")
+
+#         return data
+
+
+#     def clean(self):
+
+#         cleaned = super().clean()
+
+#         nome_form = cleaned.get("nome_completo")
+#         bi = cleaned.get("documento_identidade")
+#         selfie = cleaned.get("foto_capturada")
+
+#         if not bi or not selfie:
+#             raise ValidationError(
+#                 "Documento de identidade e selfie são obrigatórios."
+#             )
+
+#         validar_documento_completo(
+#             nome_form=nome_form,
+#             bi_file=bi,
+#             selfie_file=selfie,
+#             threshold_nome=0.55
+#         )
+
+#         return cleaned
+
+
+# class CompletarPerfilCidadaoForm(forms.ModelForm):
+
+#     class Meta:
+#         model = PerfilCidadao
+#         fields = (
+#             "nome_completo",
+#             "data_nascimento",
+#             "numero_bi",
+#             "bi",
+#             "foto",
+#             "telefone",
+#             "email",
+#             "dados_confirmados",
+#         )
+
+#     def clean_data_nascimento(self):
+
+#         data = self.cleaned_data.get("data_nascimento")
+
+#         idade = date.today().year - data.year - (
+#             (date.today().month, date.today().day) < (data.month, data.day)
+#         )
+
+#         if idade < 18:
+#             raise ValidationError("Idade mínima: 18 anos.")
+
+#         return data
+
+
+#     def clean(self):
+
+#         cleaned = super().clean()
+
+#         nome_form = cleaned.get("nome_completo")
+#         bi = cleaned.get("bi")
+#         selfie = cleaned.get("foto")
+
+#         if not bi or not selfie:
+#             raise ValidationError(
+#                 "Documento e foto são obrigatórios."
+#             )
+
+#         validar_documento_completo(
+#             nome_form=nome_form,
+#             bi_file=bi,
+#             selfie_file=selfie,
+#             threshold_nome=0.55
+#         )
+
+#         return cleaned
 
 # import cv2
 # from django import forms
