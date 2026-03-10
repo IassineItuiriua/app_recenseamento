@@ -151,18 +151,25 @@ def similaridade_nomes(nome1, nome2):
     ).ratio()
 
 
-def validar_nome_bi(nome_form, nome_bi, threshold=0.55):
+def validar_nome_bi(nome_form, nome_bi, threshold=0.65):
     if not nome_bi:
         raise ValidationError(
-            "Não foi possível validar o nome no documento. "
-            "Certifique-se de que o BI está legível."
+            "Não foi possível validar o nome no documento. Certifique-se de que o BI está legível."
         )
 
-    score = score_nome_final(nome_form, nome_bi)
+    # Score baseado em string completa
+    score_sequence = score_nome_final(nome_form, nome_bi)
+    
+    # Score baseado em palavras em comum
+    score_palavras = similaridade_por_palavras(nome_form, nome_bi)
 
-    if score < threshold:
+    # Média ponderada (50% sequence, 50% palavras)
+    score_final = (score_sequence + score_palavras) / 2
+
+    if score_final < threshold:
         raise ValidationError(
-            "O nome informado não corresponde ao documento."
+            "O nome informado não corresponde suficientemente ao documento. "
+            "Verifique se digitou corretamente conforme o BI."
         )
 # ======================
 # OCR BI
