@@ -5,7 +5,15 @@ import cloudinary.uploader
 import cloudinary.api
 import dj_database_url  # importante para render
 from dotenv import load_dotenv
+import pytesseract
+import shutil
+import os
+from django.conf import settings
 
+if getattr(settings, "ENABLE_OCR", False):
+    pytesseract.pytesseract.tesseract_cmd = os.getenv(
+        "TESSERACT_CMD", shutil.which("tesseract") or "/usr/bin/tesseract"
+    )
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Carrega .env apenas localmente (dev)

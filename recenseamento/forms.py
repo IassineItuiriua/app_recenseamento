@@ -6,6 +6,7 @@ from datetime import date
 
 from .models import Recenseamento, PerfilCidadao
 from recenseamento.utils.bi import extrair_numero_bi
+from recenseamento.utils.ocr import extrair_texto_do_bi
 
 from PIL import Image
 from pdf2image import convert_from_path
@@ -16,7 +17,6 @@ import os
 import tempfile
 from difflib import SequenceMatcher
 from django.conf import settings
-
 
 # ======================
 # TESSERACT
@@ -152,7 +152,7 @@ def similaridade_nomes(nome1, nome2):
 
 
 def validar_nome_bi(nome_form, nome_bi, threshold=0.55):
-    if not nome_bi or len(nome_bi.strip()) < 8:
+    if not nome_bi:
         raise ValidationError(
             "Não foi possível validar o nome no documento. "
             "Certifique-se de que o BI está legível."
