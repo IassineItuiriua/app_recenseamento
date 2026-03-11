@@ -1,13 +1,44 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
-echo ">>> Aplicando migrações"
-python manage.py migrate --noinput || true
+# ----------------------------
+# Variáveis de superuser
+# ----------------------------
+export DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-isslamiassine@gmail.com}
+export DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-Nfckffjtbabqmtqe}
+export DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_EMAIL}  # username pode ser o próprio email
 
-echo ">>> Coletando estáticos"
-python manage.py collectstatic --noinput || true
+# ----------------------------
+# Migrações e estáticos
+# ----------------------------
+echo "Aplicando migrações..."
+python manage.py migrate --noinput
 
+echo "Coletando arquivos estáticos..."
+python manage.py collectstatic --noinput
+
+# ----------------------------
+# Criar superuser (login por email)
+# ----------------------------
+echo "Criando superuser (se não existir)..."
+python manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); \
+email = '$DJANGO_SUPERUSER_EMAIL'; password = '$DJANGO_SUPERUSER_PASSWORD'; \
+User.objects.filter(email=email).exists() or User.objects.create_superuser(username=email, email=email, password=password)"
+
+# ----------------------------
+# Executa o comando padrão (Gunicorn)
+# ----------------------------
 exec "$@"
+# #!/bin/sh
+# set -e
+
+# echo ">>> Aplicando migrações"
+# python manage.py migrate --noinput || true
+
+# echo ">>> Coletando estáticos"
+# python manage.py collectstatic --noinput || true
+
+# exec "$@"
 
 
 
