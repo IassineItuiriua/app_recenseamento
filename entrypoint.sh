@@ -7,32 +7,10 @@ python manage.py migrate --noinput
 echo "Coletando arquivos estáticos..."
 python manage.py collectstatic --noinput
 
-echo "Criando superuser (se não existir)..."
-
-python manage.py shell << END
-from django.contrib.auth import get_user_model
-import os
-
-User = get_user_model()
-
-email = os.environ.get("DJANGO_SUPERUSER_EMAIL")
-password = os.environ.get("DJANGO_SUPERUSER_PASSWORD")
-
-if email and password:
-    if not User.objects.filter(email=email).exists():
-        print("Criando superuser...")
-        User.objects.create_superuser(
-            email=email,
-            password=password
-        )
-    else:
-        print("Superuser já existe.")
-else:
-    print("Variáveis de ambiente não definidas.")
-END
+echo "Bootstrap do sistema..."
+python manage.py bootstrap_system
 
 echo "Iniciando servidor..."
-
 exec "$@"
 # #!/bin/sh
 # set -e
