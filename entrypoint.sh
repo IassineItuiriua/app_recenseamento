@@ -1,46 +1,35 @@
 #!/bin/bash
 set -e
 
-# =========================
-# Variáveis do superuser
-# =========================
-# Pode sobrescrever via painel do Render
-export DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-isslamiassine@gmail.com}
-export DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-militar123}
-export DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_EMAIL}  # username = email
-
-# =========================
-# Migrações e estáticos
-# =========================
 echo "Aplicando migrações..."
 python manage.py migrate --noinput
 
 echo "Coletando arquivos estáticos..."
 python manage.py collectstatic --noinput
 
-# =========================
-# Criar superuser automaticamente
-# =========================
 echo "Criando superuser (se não existir)..."
 
-python - <<END
+python - << END
+import os
 from django.contrib.auth import get_user_model
+
 User = get_user_model()
-email = "${DJANGO_SUPERUSER_EMAIL}"
-password = "${DJANGO_SUPERUSER_PASSWORD}"
+
+email = os.environ.get("DJANGO_SUPERUSER_EMAIL", "isslamiassine@gmail.com")
+password = os.environ.get("DJANGO_SUPERUSER_PASSWORD", "militar123")
 
 if not User.objects.filter(email=email).exists():
-    print("Superuser não existe. Criando agora...")
-    User.objects.create_superuser(username=email, email=email, password=password)
+    print("Criando superuser...")
+    User.objects.create_superuser(
+        email=email,
+        password=password
+    )
 else:
     print("Superuser já existe.")
 END
 
-echo "Superuser pronto! Email: $DJANGO_SUPERUSER_EMAIL"
+echo "Iniciando servidor..."
 
-# =========================
-# Executa o comando padrão (Gunicorn)
-# =========================
 exec "$@"
 # #!/bin/sh
 # set -e
