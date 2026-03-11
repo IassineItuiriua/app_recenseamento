@@ -55,7 +55,7 @@ EXPOSE 8000
 ENTRYPOINT ["./entrypoint.sh"]
 
 # Comando padrão Gunicorn
-CMD ["gunicorn", "meu_projecto.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "1", "--timeout", "120"]
+CMD ["gunicorn", "meu_projecto.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120"]
 # # Base Python 3.10
 # FROM python:3.10-bullseye
 
