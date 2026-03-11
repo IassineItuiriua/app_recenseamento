@@ -5,7 +5,7 @@ set -e
 # Variáveis de superuser
 # ----------------------------
 export DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-isslamiassine@gmail.com}
-export DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-Nfckffjtbabqmtqe}
+export DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-militar123}
 export DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_EMAIL}  # username pode ser o próprio email
 
 # ----------------------------
