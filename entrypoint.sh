@@ -9,23 +9,26 @@ python manage.py collectstatic --noinput
 
 echo "Criando superuser (se não existir)..."
 
-python - << END
-import os
+python manage.py shell << END
 from django.contrib.auth import get_user_model
+import os
 
 User = get_user_model()
 
-email = os.environ.get("DJANGO_SUPERUSER_EMAIL", "isslamiassine@gmail.com")
-password = os.environ.get("DJANGO_SUPERUSER_PASSWORD", "militar123")
+email = os.environ.get("DJANGO_SUPERUSER_EMAIL")
+password = os.environ.get("DJANGO_SUPERUSER_PASSWORD")
 
-if not User.objects.filter(email=email).exists():
-    print("Criando superuser...")
-    User.objects.create_superuser(
-        email=email,
-        password=password
-    )
+if email and password:
+    if not User.objects.filter(email=email).exists():
+        print("Criando superuser...")
+        User.objects.create_superuser(
+            email=email,
+            password=password
+        )
+    else:
+        print("Superuser já existe.")
 else:
-    print("Superuser já existe.")
+    print("Variáveis de ambiente não definidas.")
 END
 
 echo "Iniciando servidor..."
