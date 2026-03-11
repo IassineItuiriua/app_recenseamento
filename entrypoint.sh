@@ -1,33 +1,46 @@
 #!/bin/bash
 set -e
 
-# ----------------------------
-# Variáveis de superuser
-# ----------------------------
+# =========================
+# Variáveis do superuser
+# =========================
+# Pode sobrescrever via painel do Render
 export DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-isslamiassine@gmail.com}
 export DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-militar123}
-export DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_EMAIL}  # username pode ser o próprio email
+export DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_EMAIL}  # username = email
 
-# ----------------------------
+# =========================
 # Migrações e estáticos
-# ----------------------------
+# =========================
 echo "Aplicando migrações..."
 python manage.py migrate --noinput
 
 echo "Coletando arquivos estáticos..."
 python manage.py collectstatic --noinput
 
-# ----------------------------
-# Criar superuser (login por email)
-# ----------------------------
+# =========================
+# Criar superuser automaticamente
+# =========================
 echo "Criando superuser (se não existir)..."
-python manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); \
-email = '$DJANGO_SUPERUSER_EMAIL'; password = '$DJANGO_SUPERUSER_PASSWORD'; \
-User.objects.filter(email=email).exists() or User.objects.create_superuser(username=email, email=email, password=password)"
 
-# ----------------------------
+python - <<END
+from django.contrib.auth import get_user_model
+User = get_user_model()
+email = "${DJANGO_SUPERUSER_EMAIL}"
+password = "${DJANGO_SUPERUSER_PASSWORD}"
+
+if not User.objects.filter(email=email).exists():
+    print("Superuser não existe. Criando agora...")
+    User.objects.create_superuser(username=email, email=email, password=password)
+else:
+    print("Superuser já existe.")
+END
+
+echo "Superuser pronto! Email: $DJANGO_SUPERUSER_EMAIL"
+
+# =========================
 # Executa o comando padrão (Gunicorn)
-# ----------------------------
+# =========================
 exec "$@"
 # #!/bin/sh
 # set -e
