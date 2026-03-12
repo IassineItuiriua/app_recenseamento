@@ -1,18 +1,25 @@
 #!/bin/bash
 set -e
 
+echo "-----------------------------------------"
+echo "INICIANDO CONTAINER DJANGO"
+echo "-----------------------------------------"
+
 echo "Aplicando migrações..."
 python manage.py migrate --noinput
+
+echo "-----------------------------------------"
 
 echo "Coletando arquivos estáticos..."
 python manage.py collectstatic --noinput
 
+echo "-----------------------------------------"
 
 echo "Configurando superuser..."
 
-python manage.py shell << END
-from django.contrib.auth import get_user_model
+python manage.py shell << 'EOF'
 import os
+from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
@@ -21,33 +28,43 @@ password = os.environ.get("DJANGO_SUPERUSER_PASSWORD")
 
 print("EMAIL CONFIGURADO:", email)
 
-if email:
+if not email:
+    print("⚠ DJANGO_SUPERUSER_EMAIL não definido")
+else:
 
-    users = User.objects.filter(email=email)
+    user = User.objects.filter(email=email).first()
 
-    if users.exists():
-        for user in users:
-            user.is_staff = True
-            user.is_superuser = True
-            if password:
-                user.set_password(password)
-            user.save()
-            print("Permissões corrigidas para:", user.email)
+    if user:
+        print("Usuário já existe. Corrigindo permissões...")
+
+        user.is_staff = True
+        user.is_superuser = True
+
+        if password:
+            user.set_password(password)
+
+        user.save()
+
+        print("✔ Permissões corrigidas")
 
     else:
-        user = User.objects.create_superuser(
+        print("Criando superuser...")
+
+        User.objects.create_superuser(
             email=email,
             password=password
         )
-        print("Superuser criado:", email)
 
-else:
-    print("DJANGO_SUPERUSER_EMAIL não definido")
+        print("✔ Superuser criado")
 
-END
+print("Total de usuários:", User.objects.count())
 
+EOF
 
-echo "Iniciando servidor..."
+echo "-----------------------------------------"
+echo "INICIANDO GUNICORN"
+echo "-----------------------------------------"
+
 exec "$@"
 # #!/bin/bash
 # set -e
