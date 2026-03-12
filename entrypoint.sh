@@ -1,3 +1,43 @@
+#!/bin/bash
+set -e
+
+echo "Aplicando migrações..."
+python manage.py migrate --noinput
+
+echo "Coletando arquivos estáticos..."
+python manage.py collectstatic --noinput
+
+
+echo "Corrigindo ou criando superuser..."
+
+python manage.py shell << END
+from django.contrib.auth import get_user_model
+import os
+
+User = get_user_model()
+
+email = os.environ.get("DJANGO_SUPERUSER_EMAIL")
+password = os.environ.get("DJANGO_SUPERUSER_PASSWORD")
+
+if email and password:
+
+    user, created = User.objects.get_or_create(email=email)
+
+    user.is_staff = True
+    user.is_superuser = True
+    user.set_password(password)
+    user.save()
+
+    print("Superuser pronto:", email)
+
+else:
+    print("Variáveis de ambiente não definidas")
+
+END
+
+
+echo "Iniciando servidor..."
+exec "$@"
 # #!/bin/bash
 # set -e
 
@@ -134,16 +174,16 @@
 
 
 #!/bin/bash
-set -e
+# set -e
 
-echo "Aplicando migrações..."
-python manage.py migrate --noinput
+# echo "Aplicando migrações..."
+# python manage.py migrate --noinput
 
-echo "Coletando arquivos estáticos..."
-python manage.py collectstatic --noinput
+# echo "Coletando arquivos estáticos..."
+# python manage.py collectstatic --noinput
 
-echo "Inicializando sistema..."
-python manage.py bootstrap_system || true
+# echo "Inicializando sistema..."
+# python manage.py bootstrap_system || true
 
-echo "Iniciando servidor..."
-exec "$@"
+# echo "Iniciando servidor..."
+# exec "$@"
