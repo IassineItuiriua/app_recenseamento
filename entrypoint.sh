@@ -8,7 +8,7 @@ echo "Coletando arquivos estáticos..."
 python manage.py collectstatic --noinput
 
 
-echo "Corrigindo ou criando superuser..."
+echo "Configurando superuser..."
 
 python manage.py shell << END
 from django.contrib.auth import get_user_model
@@ -19,19 +19,30 @@ User = get_user_model()
 email = os.environ.get("DJANGO_SUPERUSER_EMAIL")
 password = os.environ.get("DJANGO_SUPERUSER_PASSWORD")
 
-if email and password:
+print("EMAIL CONFIGURADO:", email)
 
-    user, created = User.objects.get_or_create(email=email)
+if email:
 
-    user.is_staff = True
-    user.is_superuser = True
-    user.set_password(password)
-    user.save()
+    users = User.objects.filter(email=email)
 
-    print("Superuser pronto:", email)
+    if users.exists():
+        for user in users:
+            user.is_staff = True
+            user.is_superuser = True
+            if password:
+                user.set_password(password)
+            user.save()
+            print("Permissões corrigidas para:", user.email)
+
+    else:
+        user = User.objects.create_superuser(
+            email=email,
+            password=password
+        )
+        print("Superuser criado:", email)
 
 else:
-    print("Variáveis de ambiente não definidas")
+    print("DJANGO_SUPERUSER_EMAIL não definido")
 
 END
 
