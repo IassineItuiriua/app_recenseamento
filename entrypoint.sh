@@ -1,39 +1,39 @@
-#!/bin/bash
-set -e
+# #!/bin/bash
+# set -e
 
-echo "Aplicando migrações..."
-python manage.py migrate --noinput
+# echo "Aplicando migrações..."
+# python manage.py migrate --noinput
 
-echo "Coletando arquivos estáticos..."
-python manage.py collectstatic --noinput
+# echo "Coletando arquivos estáticos..."
+# python manage.py collectstatic --noinput
 
-echo "Criando superuser (se não existir)..."
+# echo "Criando superuser (se não existir)..."
 
-python manage.py shell << END
-from django.contrib.auth import get_user_model
-import os
+# python manage.py shell << END
+# from django.contrib.auth import get_user_model
+# import os
 
-User = get_user_model()
+# User = get_user_model()
 
-email = os.environ.get("DJANGO_SUPERUSER_EMAIL")
-password = os.environ.get("DJANGO_SUPERUSER_PASSWORD")
+# email = os.environ.get("DJANGO_SUPERUSER_EMAIL")
+# password = os.environ.get("DJANGO_SUPERUSER_PASSWORD")
 
-if email and password:
-    if not User.objects.filter(email=email).exists():
-        print("Criando superuser...")
-        User.objects.create_superuser(
-            email=email,
-            password=password
-        )
-    else:
-        print("Superuser já existe.")
-else:
-    print("Variáveis de ambiente não definidas.")
-END
+# if email and password:
+#     if not User.objects.filter(email=email).exists():
+#         print("Criando superuser...")
+#         User.objects.create_superuser(
+#             email=email,
+#             password=password
+#         )
+#     else:
+#         print("Superuser já existe.")
+# else:
+#     print("Variáveis de ambiente não definidas.")
+# END
 
-echo "Iniciando servidor..."
+# echo "Iniciando servidor..."
 
-exec "$@"
+# exec "$@"
 # #!/bin/sh
 # set -e
 
@@ -188,3 +188,4 @@ python manage.py collectstatic --noinput
 # 7. Iniciar servidor
 echo "==> Iniciando Gunicorn..."
 exec gunicorn meu_projecto.wsgi:application --bind 0.0.0.0:$PORT
+exec "$@"
