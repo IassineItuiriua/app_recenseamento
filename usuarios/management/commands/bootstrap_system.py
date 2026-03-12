@@ -1,11 +1,9 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
 import os
 
 
 class Command(BaseCommand):
-    help = "Inicializa o sistema criando superuser e grupos"
 
     def handle(self, *args, **kwargs):
 
@@ -14,23 +12,25 @@ class Command(BaseCommand):
         email = os.environ.get("DJANGO_SUPERUSER_EMAIL")
         password = os.environ.get("DJANGO_SUPERUSER_PASSWORD")
 
-        if email and password:
-            if not User.objects.filter(email=email).exists():
+        user = User.objects.filter(email=email).first()
 
-                self.stdout.write("Criando superuser...")
+        if user:
 
-                User.objects.create_superuser(
-                    email=email,
-                    password=password
-                )
+            if not user.is_staff or not user.is_superuser:
 
-            else:
-                self.stdout.write("Superuser já existe.")
+                self.stdout.write("Corrigindo permissões do superuser...")
 
-        # Criar grupos básicos
-        grupos = ["Administrador", "Operador", "Tecnico"]
+                user.is_staff = True
+                user.is_superuser = True
+                user.save()
 
-        for g in grupos:
-            Group.objects.get_or_create(name=g)
+        else:
 
-        self.stdout.write(self.style.SUCCESS("Sistema inicializado com sucesso"))
+            self.stdout.write("Criando superuser...")
+
+            User.objects.create_superuser(
+                email=email,
+                password=password
+            )
+
+        self.stdout.write("Bootstrap finalizado")
