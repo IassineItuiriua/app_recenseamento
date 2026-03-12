@@ -1,17 +1,17 @@
 #!/bin/bash
-set -e
+# set -e
 
-echo "Aplicando migrações..."
-python manage.py migrate --noinput
+# echo "Aplicando migrações..."
+# python manage.py migrate --noinput
 
-echo "Coletando arquivos estáticos..."
-python manage.py collectstatic --noinput
+# echo "Coletando arquivos estáticos..."
+# python manage.py collectstatic --noinput
 
-echo "Bootstrap do sistema..."
-python manage.py bootstrap_system
+# echo "Bootstrap do sistema..."
+# python manage.py bootstrap_system
 
-echo "Iniciando servidor..."
-exec "$@"
+# echo "Iniciando servidor..."
+# exec "$@"
 # #!/bin/sh
 # set -e
 
@@ -41,73 +41,73 @@ exec "$@"
 
 
 
-# #!/usr/bin/env bash
-# set -e
+#!/usr/bin/env bash
+set -e
 
-# echo "==> Iniciando Django no Render..."
+echo "==> Iniciando Django no Render..."
 
-# # 1. Rodar migrations SEM criar unique ainda
-# echo "==> Aplicando migrations (sem constraints)..."
-# python manage.py migrate auth
-# python manage.py migrate contenttypes
-# python manage.py migrate admin
-# python manage.py migrate sessions
-# python manage.py migrate usuarios --fake-initial || true
-# # python manage.py migrate recenseamento
-# # python manage.py migrate documento
-# echo "==> Sincronizando migrations críticas..."
+# 1. Rodar migrations SEM criar unique ainda
+echo "==> Aplicando migrations (sem constraints)..."
+python manage.py migrate auth
+python manage.py migrate contenttypes
+python manage.py migrate admin
+python manage.py migrate sessions
+python manage.py migrate usuarios --fake-initial || true
+# python manage.py migrate recenseamento
+# python manage.py migrate documento
+echo "==> Sincronizando migrations críticas..."
 
-# python manage.py showmigrations recenseamento | grep 0002_initial | grep "\[ \]" && \
-# python manage.py migrate recenseamento 0002 --fake || true
+python manage.py showmigrations recenseamento | grep 0002_initial | grep "\[ \]" && \
+python manage.py migrate recenseamento 0002 --fake || true
 
-# python manage.py showmigrations documento | grep 0001_initial | grep "\[ \]" && \
-# python manage.py migrate documento 0001 --fake || true
+python manage.py showmigrations documento | grep 0001_initial | grep "\[ \]" && \
+python manage.py migrate documento 0001 --fake || true
 
-# # 2. Remover duplicados ANTES de criar o índice unique
-# echo "==> Limpando emails duplicados..."
-# python manage.py shell -c "
-# from django.contrib.auth import get_user_model
-# User = get_user_model()
+# 2. Remover duplicados ANTES de criar o índice unique
+echo "==> Limpando emails duplicados..."
+python manage.py shell -c "
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
-# seen = set()
-# for u in User.objects.all().order_by('id'):
-#     if u.email in seen:
-#         print('Removendo duplicado:', u.email)
-#         u.delete()
-#     else:
-#         seen.add(u.email)
-# "
+seen = set()
+for u in User.objects.all().order_by('id'):
+    if u.email in seen:
+        print('Removendo duplicado:', u.email)
+        u.delete()
+    else:
+        seen.add(u.email)
+"
 
-# echo "==> Forçando sincronização da migration documento.0002..."
+echo "==> Forçando sincronização da migration documento.0002..."
 
-# python manage.py migrate documento 0002 --fake || true
+python manage.py migrate documento 0002 --fake || true
 
-# # 3. Agora aplicar migrations reais (cria UNIQUE)
-# echo "==> Aplicando migrations finais..."
-# python manage.py migrate
+# 3. Agora aplicar migrations reais (cria UNIQUE)
+echo "==> Aplicando migrations finais..."
+python manage.py migrate
 
-# # 4. Criar superuser via env
-# python manage.py shell -c "
-# import os
-# from django.contrib.auth import get_user_model
-# User = get_user_model()
+# 4. Criar superuser via env
+python manage.py shell -c "
+import os
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
-# email = os.environ.get('DJANGO_SUPERUSER_EMAIL')
-# password = os.environ.get('DJANGO_SUPERUSER_PASSWORD')
+email = os.environ.get('DJANGO_SUPERUSER_EMAIL')
+password = os.environ.get('DJANGO_SUPERUSER_PASSWORD')
 
-# if email and password:
-#     if not User.objects.filter(email=email).exists():
-#         User.objects.create_superuser(email=email, password=password)
-#         print('Superuser criado')
-#     else:
-#         print('Superuser já existe')
-# "
+if email and password:
+    if not User.objects.filter(email=email).exists():
+        User.objects.create_superuser(email=email, password=password)
+        print('Superuser criado')
+    else:
+        print('Superuser já existe')
+"
 
-# # 5. Coletar estáticos
-# python manage.py collectstatic --noinput
+# 5. Coletar estáticos
+python manage.py collectstatic --noinput
 
-# # 6. Iniciar servidor
-# exec gunicorn meu_projecto.wsgi:application --bind 0.0.0.0:$PORT
+# 6. Iniciar servidor
+exec gunicorn meu_projecto.wsgi:application --bind 0.0.0.0:$PORT
 
 
 
